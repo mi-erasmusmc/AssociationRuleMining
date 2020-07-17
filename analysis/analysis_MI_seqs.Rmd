@@ -1,0 +1,305 @@
+---
+title: "Untitled"
+author: "Solon Ioannou"
+date: "7/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(arules)
+library(arulesSequences)
+library(arulesViz)
+library(knitr)
+library(tidyverse)
+library(data.table)
+library(networkD3)
+```
+
+```{r}
+trans_matrix <- read_baskets("../data/processed/eunomia_MI_trans_seqs.txt", sep = ";", info = c("sequenceID","eventID","SIZE"))
+class(trans_matrix)
+trans_matrix@itemInfo
+trans_matrix@itemsetInfo
+inspect(head(trans_matrix))
+inspect(tail(trans_matrix))
+```
+
+```{r}
+s1 <- cspade(trans_matrix, parameter = list(support = 0.9), control = list(verbose = TRUE, tidLists = TRUE))
+df2 <- as(trans_matrix, "data.frame")
+s2 <- cspade(df2, parameter = list(support = 0.5, maxsize = 5), control = list(verbose = TRUE, tidLists = TRUE))
+s1.df <- as(s1, "data.frame")
+summary(s1)
+summary(tidLists(s1))
+#kable(s1.df)
+s1@elements@info
+inspect(s1)
+
+set1 <- sort(s1, by = "support", decreasing = TRUE)
+s1@tidLists@transactionInfo
+```
+
+```{r}
+scrul.dt <- as(s1,"data.frame")
+scrul.dt$sequence <- gsub("df3\\$cart2\\=|<|>","",scrul.dt$sequence)
+scrul.dt1 <- scrul.dt[count.fields(textConnection(scrul.dt$sequence),sep = ",")>1,]
+scrul.dt1[47,]
+```
+
+
+```{r}
+sequences <- s1 %>% 
+    .[size(., "itemsets") > 1] %>% 
+    as("data.frame") %>% 
+    arrange(desc(support))
+#kable(sequences)
+```
+
+```{r}
+r1 <- ruleInduction(s1, confidence = 0.8, control = list(verbose =TRUE))
+r2 <- as(ruleInduction(s1, confidence = 0.8, control = list(verbose = TRUE)), "data.frame")
+inspect(r1)
+#kable(as.data.frame(r1))
+#as.data.table(r1)
+itemLabels(rhs(r1))
+finalSeq <- subset(r1, rhs(x) %ain% "Myocardial infarction")
+finalSeq@rhs
+#as.data.frame(finalSeq)
+data.table(as(finalSeq, "data.frame"))
+finalseq_df <- as(finalSeq, "data.frame")
+```
+
+```{r}
+final_seq_high <- finalseq_df %>% arrange(support) %>% filter(support >=0.8)
+
+as(finalSeq@elements@items, "matrix")
+finalSeq@lhs
+sequences_score <- as.matrix(final@tidLists@data)
+# Get mapping ids, change to numeric values
+mapping_ids      <- as.numeric(s1@tidLists@transactionInfo$sequenceID)
+
+# Then map your matrix sequence_score to correspond to the order of your data
+sequences_score  <- sequences_score[order(mapping_ids), ]
+```
+
+```{r}
+subset.rules <- which(colSums(is.subset(s1, s1)) > 1) # get subset rules in vector
+length(subset.rules)
+subset.association.rules. <- s1[-subset.rules] # remove subset rules.
+length(subset.association.rules.)
+subset_s1 <- as(subset.association.rules., "data.frame")
+
+
+s1@tidLists
+supseq <- is.superset(s1 , s1, proper = TRUE)
+subsets <- is.subset(s1, s1)
+supseq@x
+subsets@x
+subsets_df <- as(subsets, "data.frame")
+```
+
+```{r}
+finalseq_df$rulecount <- as.character(finalseq_df$rule)
+max_col <- max(sapply(strsplit(finalseq_df$rulecount,' => '),length))
+r_sep <- separate(data = finalseq_df, col = rule, into = paste0("Time",1:max_col), sep = " => ")
+#remove brackets
+r_sep$Time2 <- substring(r_sep$Time2,3,nchar(r_sep$Time2)-2)
+
+# Strip LHS baskets
+max_time1 <- max(sapply(strsplit(r_sep$Time1,'},'),length))
+r_sep$TimeClean <- substring(r_sep$Time1,3,nchar(r_sep$Time1)-2)
+r_sep$TimeClean <- gsub("\\},\\{", " => ", r_sep$TimeClean)
+r_sep_items <- separate(data = r_sep, col = TimeClean, into = paste0("Previous_Items",1:max_time1), sep = " => ")
+#r_sep <- separate(data = r_sep, col = TimeClean, into = paste0("Previous_items",1:max_time1), sep = " => ")
+
+#unlist(strsplit(finalseq_df$rule, "[]"))
+
+#r_sep
+
+
+
+# Get cleaned temporal rules: time reads sequentially from left to right
+
+r_shift_na <- r_sep_items
+
+for (i in seq(1, nrow(r_shift_na))){
+  for (col in seq(8, (6+max_time1))){
+    if (is.na(r_shift_na[i,col])==TRUE){
+      r_shift_na[i,col] <- r_shift_na[i,col-1]
+      r_shift_na[i,col-1] <- NA  
+    }
+  }
+}
+names(r_shift_na)[2] <- "Predicted_Items"
+
+cols <- c(7:(6+max_time1), 2:5)
+temporal_rules <- r_shift_na[,cols]
+temporal_rules <- temporal_rules[order(-temporal_rules$lift, -temporal_rules$confidence, 
+                                       -temporal_rules$support, temporal_rules$Predicted_Items),]
+
+write.csv(as.data.frame(temporal_rules), file = "TemporalRules.csv", row.names = FALSE, na="")
+
+# Get unique frequent itemsets existing in rules (subset of those in s1.df)
+baskets_only <- temporal_rules[,1:(ncol(temporal_rules)-3)]
+basket_mat <- as.vector(as.matrix(baskets_only))
+freq_itemsets_in_rules <- unique(basket_mat[!is.na(basket_mat)])
+#write.csv(as.data.frame(freq_itemsets_in_rules), file = "FreqItemsetsInRules.csv", row.names = FALSE)
+freq_itemsets_in_rules
+baskets_only
+```
+
+```{r}
+r2$rulecount <- as.character(r2$rule)
+max_col <- max(sapply(strsplit(r2$rulecount,' => '),length))
+r_sep <- separate(data = r2, col = rule, into = paste0("Time",1:max_col), sep = " => ")
+r_sep$Time2 <- substring(r_sep$Time2,3,nchar(r_sep$Time2)-2)
+
+# Strip LHS baskets
+max_time1 <- max(sapply(strsplit(r_sep$Time1,'},'),length))
+r_sep$TimeClean <- substring(r_sep$Time1,3,nchar(r_sep$Time1)-2)
+r_sep$TimeClean <- gsub("\\},\\{", "zzz", r_sep$TimeClean)
+r_sep_items <- separate(data = r_sep, col = TimeClean, into = paste0("Previous_Items",1:max_time1), sep = "zzz")
+
+# Get cleaned temporal rules: time reads sequentially from left to right
+
+r_shift_na <- r_sep_items
+
+for (i in seq(1, nrow(r_shift_na))){
+  for (col in seq(8, (6+max_time1))){
+    if (is.na(r_shift_na[i,col])==TRUE){
+      r_shift_na[i,col] <- r_shift_na[i,col-1]
+      r_shift_na[i,col-1] <- NA  
+    }
+  }
+}
+names(r_shift_na)[2] <- "Predicted_Items"
+
+cols <- c(7:(6+max_time1), 2:5)
+temporal_rules <- r_shift_na[,cols]
+temporal_rules <- temporal_rules[order(-temporal_rules$lift, -temporal_rules$confidence, 
+                                       -temporal_rules$support, temporal_rules$Predicted_Items),]
+
+write.csv(as.data.frame(temporal_rules), file = "TemporalRules.csv", row.names = FALSE, na="")
+
+# Get unique frequent itemsets existing in rules (subset of those in s1.df)
+baskets_only <- temporal_rules[,1:(ncol(temporal_rules)-3)]
+basket_mat <- as.vector(as.matrix(baskets_only))
+freq_itemsets_in_rules <- unique(basket_mat[!is.na(basket_mat)])
+#write.csv(as.data.frame(freq_itemsets_in_rules), file = "FreqItemsetsInRules.csv", row.names = FALSE)
+freq_itemsets_in_rules
+baskets_only
+```
+
+```{r}
+#from stackoverflow: https://stackoverflow.com/questions/45695546/r-arulessequences-which-frequent-sequences-are-present-in-a-transaction
+
+sequences_score <- as.matrix(s1@tidLists@data)
+# Get mapping ids, change to numeric values
+mapping_ids      <- as.numeric(s1@tidLists@transactionInfo$sequenceID)
+
+# Then map your matrix sequence_score to correspond to the order of your data
+sequences_score  <- sequences_score[order(mapping_ids), ]
+```
+
+
+```{r}
+#find which sequences are in each sequence id
+ids <- unique(trans_matrix@itemsetInfo$sequenceID)
+encoding <- data.frame()
+
+# Prepare the data.frame: as many columns as there are frequent sequences
+for (seq_id in 1:length(finalSeq)){
+    encoding[,labels(finalSeq[seq_id])] <- logical(0)
+}
+
+# Fill the rows
+for (id in ids){
+    transaction_subset <- trans_matrix[trans_matrix@itemsetInfo$sequenceID==id]
+    encoding[id, ] <- as.logical(
+        support(s1, transaction_subset, type="absolute")
+        )
+}
+```
+
+
+```{r}
+nodes <- data.frame(
+  name=c(as.character(temporal_rules$Previous_Items1), 
+  as.character(temporal_rules$Predicted_Items)) %>% unique()
+)
+
+nodes <- data.frame(
+  name = freq_itemsets_in_rules
+)
+
+nodes<- rbind(nodes, "Viral sinusitis")
+nodes<- rbind(nodes, "Acute viral pharyngitis")
+
+nodes$id <- c(0, 1, 2, 3, 4, 5, 6, 7 )
+nodes$name
+nades$name <- nodes$name + c("solon")
+
+links <-  data.frame(
+  source = c(temporal_rules$Previous_Items1, temporal_rules$Previous_Items2), 
+  target = c(temporal_rules$Previous_Items2, temporal_rules$Predicted_Items)
+)
+
+set.seed(1)
+links <- links %>% 
+  mutate(value = sample(10:30, 20, replace = TRUE))
+
+links <- mutate(links, source2 = ifelse(source == "Viral sinusitis", 0, ifelse(source == "Acute viral pharyngitis", 1, ifelse(source == "Coronary arteriosclerosis", 2, ifelse(source == "Osteoarthritis", 3, ifelse(source == "Acute bronchitis", 4, 5))) ) ))
+
+links <- mutate(links, target2 = ifelse(target == "Viral sinusitis", 6, ifelse(target == "Acute viral pharyngitis", 7, ifelse(target == "Coronary arteriosclerosis", 2, ifelse(target == "Osteoarthritis", 3, ifelse(target == "Acute bronchitis", 4, 5))) ) ))
+
+
+
+temporal_rules$IDsource <- match(temporal_rules$Previous_Items1, nodes$name)-1 
+temporal_rules$IDtarget <- match(temporal_rules$Predicted_Items, nodes$name)-1
+
+links <- na.omit(links)
+links$source2[9] <-6
+links$source2[14] <-7
+
+length(unique(c(links$source, links$target)))
+length(nodes$name)
+
+p <- sankeyNetwork(Links = links, Nodes = nodes,
+              Source = "source2", Target = "target2",
+              Value = "value", NodeID = "name", fontSize = 20,
+        nodeWidth = 40,
+        nodePadding = 20,
+              )
+p
+
+library(webshot)
+webshot::install_phantomjs()
+saveWidget(p, file="p.html")
+webshot("p.html" , "sankey1.pdf", delay = 0.2)
+#webshot("p.html", "sankey1.png" , cliprect = c(440, 0, 1000, 10))
+
+networkD3::saveNetwork(p, file = "sankey2.html")
+webshot("sankey2.html", "sankey2.png") 
+```
+
+
+```{r}
+tablerules <- as.data.frame(r_sep$rulecount)
+names(tablerules) <- "Induced Rules"
+tablerules$Support <- r_sep$support
+tablerules$Confidence <- r_sep$confidence
+kable(tablerules) 
+write.table(tablerules, file = "tablerules.txt", sep = ";", quote = FALSE, row.names = F)
+```
+
+
+```{r}
+library(htmlwidgets)
+library(htmltools)
+
+#p <- htmlwidgets::prependContent(p, htmltools::tags$h1(""))
+#p <- htmlwidgets::appendContent(p, htmltools::tags$p("Caption"))
+#p
+```
+

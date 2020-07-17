@@ -1,0 +1,45 @@
+---
+title: "Untitled"
+author: "Solon Ioannou"
+date: "7/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(arules)
+library(arulesSequences)
+library(arulesViz)
+library(knitr)
+library(tidyverse)
+```
+
+```{r}
+trans_matrix <- read_baskets("../data/processed/eunomia_trans_seqs.txt", sep = ";", info = c("sequenceID","eventID","SIZE"))
+```
+
+```{r}
+s1 <- cspade(trans_matrix, parameter = list(support = 0.1), control = list(verbose = TRUE, tidLists = TRUE))
+s1.df <- as(s1, "data.frame")
+summary(s1)
+summary(tidLists(s1))
+kable(s1.df)
+s1@elements@info
+```
+
+```{r}
+sequences <- s1 %>% 
+    .[size(., "itemsets") > 1] %>% 
+    as("data.frame") %>% 
+    arrange(desc(support))
+kable(sequences)
+```
+
+
+```{r}
+r1 <- as(ruleInduction(s1, confidence = 0.5, control = list(verbose = TRUE)), "data.frame")
+kable(as.data.frame(r1))
+```
+
+
+
