@@ -16,9 +16,6 @@ connection <- connect(connectionDetails)
 
 # Load data
 
-
-
-
 ```{r}
 sql <- readSql("../data/cohorts/heart_failure_2.sql")
 sql <- render(sql,

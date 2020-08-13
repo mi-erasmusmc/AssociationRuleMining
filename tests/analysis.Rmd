@@ -49,11 +49,11 @@ rules1 <- apriori(data1, parameter = list(support = 0.5, confidence = 0.5))
 rules1 <- apriori(data1, parameter = ap_params)
 rules1
 summary(rules1)
-rules_insp1 <- inspect(rules1)
-rules_conf1 <- sort(rules1, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
+inspect(rules1)
+rules_conf1<- sort(rules1, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
 inspect(rules_conf1)
-inspect(head(rules_conf1))
-inspect(tail(rules_conf1))
+#inspect(head(rules_conf1))
+#inspect(tail(rules_conf1))
 
 rules_chisqu1 <- sort(rules1, by="chi2", decreasing=TRUE) # 'high-confidence' rules.
 inspect(rules_chisqu1)
@@ -67,26 +67,6 @@ plot(rules1)
 plot(rules1, method = "graph",  engine = "htmlwidget")
 ```
 
-# ECLAT
-
-```{r}
-itemsets_ec <- eclat(data1, parameter = list(supp=0.03, maxlen=30))
-rules_ec <- ruleInduction(itemsets_ec, data1, confidence = 0.9)
-
-#inspect(sort(rules_ec, by = "lift"))
-subset.rules_ec <- which(colSums(is.subset(rules_ec, rules_ec)) > 1) # get subset rules in vector
-length(subset.rules_ec)  #
-
-subset.association.rules_ec <- rules_ec[-subset.rules_ec] # remove subset rules.
-inspect(sort(subset.association.rules_ec, by = "lift"))
-```
-
-
-# FP-growth
-
-```{r}
-rules_fp <- buildFPGrowth(data1, support=0.03, confidence=0.03, maxLength=2, parallel=FALSE)
-```
 
 
 

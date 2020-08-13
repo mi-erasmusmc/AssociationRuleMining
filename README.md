@@ -11,7 +11,7 @@ An R package under development, for mining and analysing association rules and f
 
 ## Technology
 
-AssociationRuleMining is implemented in R using packages arules and arulesSequences, which accomodate functions implemented in C++.
+AssociationRuleMining is implemented in R using packages arules and arulesSequences, which inturn accommodate functions implemented in C++.
 
 ## System Requirements
 

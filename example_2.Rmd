@@ -1,0 +1,365 @@
+---
+title: "Association Rule Mining - Algorithms & Examples"
+author: "Solon Ioannou"
+date: "7/24/2020"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(DatabaseConnector)
+library(Eunomia)
+library(SqlRender)
+library(FeatureExtraction)
+library(ggplot2)
+library(arules)
+library(arulesViz)
+library(rCBA)
+library(knitr)
+```
+
+```{r, include=FALSE}
+## Data Import
+connectionDetails <- getEunomiaConnectionDetails()
+connection <- connect(connectionDetails)
+
+cdmDatabaseSchema <- "main"
+resultsDatabaseSchema <- "main"
+```
+
+
+```{r, include=FALSE}
+sql <- "SELECT person_id AS subject_id,
+  condition_start_date AS cohort_start_date
+INTO #diagnoses
+FROM @cdm.condition_occurrence
+WHERE condition_concept_id IN (
+    SELECT descendant_concept_id
+    FROM @cdm.concept_ancestor
+    WHERE ancestor_concept_id = 4329847 -- Myocardial infarction
+)
+  AND condition_concept_id NOT IN (
+    SELECT descendant_concept_id
+    FROM @cdm.concept_ancestor
+    WHERE ancestor_concept_id = 314666 -- Old myocardial infarction
+);"
+
+renderTranslateExecuteSql(connection, sql, cdm = "main")
+```
+
+```{r, include=FALSE}
+sql <- "INSERT INTO @cdm.cohort (
+  subject_id, 
+  cohort_start_date, 
+  cohort_definition_id
+  )
+SELECT subject_id,
+  cohort_start_date,
+  CAST (1 AS INT) AS cohort_definition_id
+FROM #diagnoses
+INNER JOIN @cdm.visit_occurrence
+  ON subject_id = person_id
+    AND cohort_start_date >= visit_start_date
+    AND cohort_start_date <= visit_end_date
+WHERE visit_concept_id IN (9201, 9203, 262); -- Inpatient or ER;"
+
+renderTranslateExecuteSql(connection, sql, cdm = "main")
+```
+
+```{r, include=FALSE}
+querySql(connection, "SELECT count(*) FROM DIAGNOSES;")
+
+```
+
+```{r, include=FALSE}
+?createCovariateSettings
+covariateSettings <- createCovariateSettings(useConditionOccurrenceAnyTimePrior = TRUE, 
+                                             #includedCovariateIds = c(), 
+                                             #includedCovariateConceptIds = c()
+                                             )
+covariateData <- getDbCovariateData(connection = connection, cdmDatabaseSchema = cdmDatabaseSchema, cohortDatabaseSchema = resultsDatabaseSchema, cohortTable = "diagnoses", rowIdField = "subject_id", covariateSettings = covariateSettings, cohortTableIsTemp = TRUE)
+summary(covariateData)
+covariateData$covariates
+class(covariateData$covariates)
+summary(covariateData$covariates)
+
+
+df <- as.data.frame(covariateData$covariates)
+unique(df$rowId)
+```
+
+```{r, include=FALSE}
+sql <- "TRUNCATE TABLE #diagnoses;
+DROP TABLE #diagnoses;"
+
+renderTranslateExecuteSql(connection, sql)
+```
+
+```{r, include=FALSE}
+disconnect(connection)
+```
+
+## Data Preparation
+
+```{r, results='hide'}
+#convert relevant variables to factor
+cols <- c("rowId", "covariateId")
+df[, cols] <- lapply(df[, cols], factor)
+```
+
+```{r, include=FALSE}
+str(df)
+summary(df)
+
+#summary(df$covariateValue)
+#df %>% filter(df$covariateValue != 1)
+```
+
+```{r, include=FALSE}
+df_input <- df %>% group_by(rowId) %>% arrange(rowId) 
+#df_input <- select(df, c(rowId, covariateId))
+
+#How many conditions per person in the dataset?
+df_input %>% 
+  group_by(rowId) %>%
+  summarise(no_rows = length(rowId))
+
+#Average conditions per person in the dataset?
+a <- df_input %>% 
+  group_by(rowId) %>%
+  summarise(no_rows = length(rowId))
+mean(a$no_rows)
+
+# Confirming distinct values in the ID variable
+length(unique(df_input$rowId))
+
+df_input %>% 
+  group_by(rowId) %>%
+  summarise(no_rows = length(rowId)) %>% 
+  ggplot(aes(no_rows)) + geom_density()
+
+df_input %>% 
+  group_by(rowId) %>%
+  summarise(no_rows = length(rowId)) %>% 
+  ggplot(aes(no_rows)) + geom_histogram() + ggtitle(label = "Histogram of events per person") + labs(x = "Number of observations", y = "Number of events")
+```
+
+```{r, include=FALSE}
+# The following is a conversion of the data from the long format in it's wide format representation.
+df_test <- df_input %>% 
+  mutate(value = 1) %>% 
+  pivot_wider(id_cols = rowId, names_from = covariateId, values_from = value)
+head(df_test)
+# From the resulting dataframe, it is obvious that the temporal character is obvious in this format as the time component is not preserved.  
+
+```
+
+```{r, results='hide'}
+# Preparing dataset without temporal information
+df_input <- as.data.frame(df_input)
+class(df_input)
+trans_sets <- as(split(df_input[,"covariateId"], df_input[,"rowId"]), "transactions")
+
+```
+
+
+```{r, include=FALSE}
+### Assigning names
+names.df <- as.data.frame(covariateData$covariateRef)
+str(names.df)
+names.df$covariateId <- as.character(names.df$covariateId)
+
+names.df$covariateLabel <-  str_replace(names.df$covariateName, ".*: ", "")
+
+df_input2 <- inner_join(df_input, names.df, by = "covariateId")
+```
+
+```{r}
+trans_sets2 <- as(split(df_input2[,"covariateLabel"], df_input2[,"rowId"]), "transactions")
+```
+
+## Data Exploration
+
+```{r, include=FALSE}
+itemfreq1 <- itemFrequency(trans_sets2) #gives support fr each item
+sort(itemfreq1, decreasing = TRUE)
+
+#itemfreq2 <- itemFrequency(data2) #gives support fr each item
+#sort(itemfreq2, decreasing = TRUE)
+```
+
+### Frequency of events in the dataset
+
+```{r, echo=FALSE}
+itemFrequencyPlot(trans_sets2, support = 0, cex.names = 0.5)
+```
+
+```{r, include=FALSE}
+df_test2 <- df_input2 %>% 
+  mutate(value = 1) %>% 
+  pivot_wider(id_cols = rowId, names_from = covariateLabel, values_from = value)
+df_test2[is.na(df_test2)] <- 0
+head(df_test2)
+exampledf <- as_tibble(head(df_test2))
+saveRDS(exampledf, "plots/exampledf.Rds")
+```
+
+## Analysis
+
+### Apriori
+
+```{r, echo=TRUE}
+#Define parameters for apriori algorithm. See ?APparameter for more details
+ap_params <- list(
+  support = 0.5, 
+  confidence = 0.5, 
+  minlen = 1,     #number of items per itemset
+  maxlen = 50,    #maximal number of items per itemset 
+  arem = "chi2",  #additional rule evaluation
+  aval = TRUE,    #return additional rule measure
+  minval = 0,   #default value for minimal value of additional rule measure
+  maxtime = 0     #Disabling he limit for subset checking
+)
+
+```
+
+```{r, results='hide'}
+rules1 <- apriori(trans_sets2, parameter = ap_params)
+```
+
+```{r}
+rules1
+```
+
+```{r, include=FALSE}
+summary(rules1)
+```
+
+```{r, include=FALSE}
+rules_insp1 <- inspect(rules1)
+rules_conf1 <- sort(rules1, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
+#inspect(rules_conf1)
+#inspect(head(rules_conf1))
+#inspect(tail(rules_conf1))
+
+rules_chisqu1 <- sort(rules1, by="chi2", decreasing=TRUE) # 'high-confidence' rules.
+#inspect(rules_chisqu1)
+```
+
+```{r, include=FALSE}
+minSupport <- seq(0.05, 0.9, 0.05)
+totalRules <- c()
+
+totalRules <- sapply(minSupport, function(x) apriori(trans_sets2,
+                   parameter=list(support=x, confidence=0.5, minlen=1, target="rules")))
+
+numberRules <- sapply(totalRules, function(x) length(x))
+
+totalMIrules <- lapply(totalRules, function(x) subset(x, subset = rhs %in% 'Myocardial infarction'))
+numberMIrules <- sapply(totalMIrules, function(x) length(x))
+```
+
+```{r, echo=FALSE}
+kable(tibble(minSupport, numberRules, numberMIrules) %>% mutate('MI%' = numberMIrules/numberRules * 100), caption = "Generated rules with varying support threshold")
+```
+
+```{r}
+#induction <- ruleInduction(rules1, trans_sets, control = list(verbose =TRUE) ) 
+```
+
+### Selecting rules with MI in the RHS
+
+```{r}
+mi_subset <- subset(rules1, subset = rhs %in% 'Myocardial infarction')
+inspect(head(sort(mi_subset, by = "lift")))
+```
+```{r, include=FALSE}
+#inspect(mi_subset)
+duplicated(mi_subset)
+is.redundant(mi_subset)
+is.maximal(mi_subset)
+#is.closed(mi_subset)
+#is.significant()
+#is.superset()
+#is.
+is.significant(mi_subset, trans_sets2)
+#inspect(mi_subset[is.significant(mi_subset, trans_sets2)])
+#as.matrix(is.superset(mi_subset, mi_subset) )
+```
+
+```{r, include=FALSE}
+as(lhs(rules1) , "list")
+```
+
+### ECLAT
+
+```{r, echo=TRUE}
+itemsets_ec <- eclat(trans_sets2, parameter = list(supp=0.5, maxlen=30))
+rules_ec <- ruleInduction(itemsets_ec, trans_sets2, confidence = 0.5)
+
+#inspect(sort(rules_ec, by = "lift"))
+subset.rules_ec <- subset(rules_ec, subset = rhs %in% 'Myocardial infarction') # get subset rules in vector
+length(subset.rules_ec)  #
+
+inspect(head(sort(subset.rules_ec, by = "lift")))
+```
+```{r, include=FALSE}
+ap_list <- as(lhs(sort(mi_subset, by = "support")), "list")
+ec_list <- as(lhs(sort(subset.rules_ec, by = "support")), "list")
+identical(ap_list[-1], ec_list)
+all.equal(ap_list[-1], ec_list)
+ec_list
+```
+
+
+### FP-growth
+
+```{r}
+#rules_fp <- rCBA::fpgrowth(trans_sets2, support=0.5, confidence=0.5, consequent = "covariateLabel", parallel=FALSE)
+```
+
+## Visualizations
+
+### Apriori
+
+```{r}
+plot(mi_subset)
+```
+
+```{r}
+plot(mi_subset, method = "graph",  engine = "htmlwidget")
+```
+
+```{r}
+plot(mi_subset, method = "paracoord", reorder = TRUE)
+```
+
+```{r, include=FALSE}
+#sequences_score <- as.matrix(sequences@tidLists@data)
+#as.matrix(mi_subset@)
+# Get mapping ids, change to numeric values
+#mapping_ids      <- as.numeric(sequences@tidLists@transactionInfo$sequenceID)
+
+# Then map your matrix sequence_score to correspond to the order of your data
+#sequences_score  <- sequences_score[order(mapping_ids), ]
+```
+
+### ECLAT
+
+```{r, echo=FALSE}
+plot(subset.rules_ec)
+```
+
+```{r, echo=FALSE}
+plot(subset.rules_ec, method = "graph",  engine = "htmlwidget")
+```
+
+```{r ,echo=FALSE}
+plot(subset.rules_ec, method = "paracoord", reorder = TRUE)
+```
+
+
+

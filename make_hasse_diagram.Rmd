@@ -1,0 +1,245 @@
+---
+title: "Untitled"
+author: "Solon Ioannou"
+date: "8/3/2020"
+output: html_document
+---
+
+also have a look here https://tex.stackexchange.com/questions/129583/how-can-i-produce-a-hasse-or-lattice-diagram/179844
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggraph)
+```
+
+```{r}
+a <- make_lattice(1:5, 1:5, dim = 3)
+plot(a)
+```
+
+```{r}
+### Create a star-like graph
+t1 <- graph_from_literal(A-B:C:D:E)
+t1
+
+#pause()
+
+### Define its plotting properties
+t1$layout <- layout_in_circle
+V(t1)$color <- "white"
+V(t1)[name=="A"]$color <- "orange"
+V(t1)$size <- 40
+V(t1)$label.cex <- 3
+V(t1)$label <- V(t1)$name
+E(t1)$color <- "black"
+E(t1)$width <- 3
+
+#pause()
+
+### Plot 't1' and A's transitivity
+tr <- transitivity(t1, type="local")[1]
+plot(t1, main=paste("Transitivity of 'A':", tr))
+
+make_lattice(letters[1:4])
+?make_lattice
+
+b <- make_lattice(c(1, 4, 16, 8))
+plot(b)
+```
+
+```{r}
+graph.comb <- function(word) {
+  # creates graph objects from character combination in word
+  # example graph.comb("abc")
+
+  do_layer <- function(words) {
+    do.call( rbind, lapply(words, function(word){
+      l_vec <- sapply(seq_len(nchar(word)), function(l) substring(word, l, l))
+      w_comb <- apply(combn(l_vec, nchar(word)-1), 2, paste, collapse = "")
+      w_df <- expand.grid(from = w_comb, to = word, stringsAsFactors = FALSE)
+    }))
+  }
+
+  df_edges <- data.frame(from = word, to = NA, stringsAsFactors = FALSE)
+  df2 <- df_edges
+  while( min(nchar(df_edges$from)) > 0) {
+    df2 <- do_layer(df2$from)
+    df_edges <- rbind(df_edges, df2)
+  }
+  df_edges <- df_edges[complete.cases(df_edges), ]
+  df_edges <- df_edges[!duplicated(df_edges), ]
+  return(graph.data.frame(df_edges ))
+}
+
+g1 <- graph.comb("abcd")
+plot(g1, layout = layout.sugiyama(g1)$layout, engine = 'htmlwidgets' )
+plot(g1, engine = 'htmlwidgets')
+```
+
+```{r}
+library(ggraph)
+library(igraph)
+library(tidyverse)
+ 
+# create an edge list data frame giving the hierarchical structure of your individuals
+d1 <- data.frame(from="origin", to=paste("group", seq(1,5), sep=""))
+d2 <- data.frame(from=rep(d1$to, each=5), to=paste("subgroup", seq(1,25), sep="_"))
+edges <- rbind(d1, d2)
+ 
+# Create a graph object 
+mygraph <- graph_from_data_frame( edges )
+
+mygraph <- graph_from_data_frame(df_edges)
+ 
+# Basic tree
+ggraph(mygraph, layout = 'auto', circular = FALSE) + 
+  geom_edge_diagonal() +
+  geom_node_point()
+#+
+#  geom_node_label(aes(label = mygraph)) +
+#  theme_void()
+length(itemsvector)
+mygraph
+print(itemsvector)
+itemnames<- append(itemsvector, "NULL", after = 0)
+
+ggraph(df_edges) + geom_edge_bend() + geom_node_point() + geom_node_label(aes(label = itemnames)) 
+
+names(mygraph) <- itemnames
+```
+
+```{r}
+let <- letters[1:4]
+lattice <- sapply(c(1:4), function(x) combn(let, m = x ))
+
+items <- lapply(lattice, function(x) do.call(paste, as.data.frame(t(x))))
+itemsvector <- unlist(items)
+
+
+do_layer <- function(words) {
+    do.call( rbind, lapply(words, function(word){
+      l_vec <- sapply(seq_len(nchar(word)), function(l) substring(word, l, l))
+      w_comb <- apply(combn(l_vec, nchar(word)-1), 2, paste, collapse = "")
+      w_df <- expand.grid(from = w_comb, to = word, stringsAsFactors = FALSE)
+    }))
+
+edges <- do_layer(itemsvector)
+plot(edges, layout = layout.sugiyama(g1)$layout, engine = 'htmlwidgets' )
+is.na(edges)
+print(edges)
+
+word = 'abcd'
+ df_edges <- data.frame(from = word, to = NA, stringsAsFactors = FALSE)
+  df2 <- df_edges
+  while( min(nchar(df_edges$from)) > 0) {
+    df2 <- do_layer(df2$from)
+    df_edges <- rbind(df_edges, df2)
+  }
+  
+    df_edges <- df_edges[complete.cases(df_edges), ]
+  df_edges <- df_edges[!duplicated(df_edges), ]
+  
+  
+mygraph2 <- graph_from_data_frame(df_edges)
+ggraph(mygraph2) + geom_edge_diagonal() + geom_node_point() + geom_node_text(label = name)
+```
+
+```{r}
+library(ggraph)
+library(igraph)
+library(tidyverse)
+theme_set(theme_void())
+ 
+# data: edge list
+d1 <- data.frame(from="origin", to=paste("group", seq(1,7), sep=""))
+d2 <- data.frame(from=rep(d1$to, each=7), to=paste("subgroup", seq(1,49), sep="_"))
+edges <- rbind(d1, d2)
+ 
+# We can add a second data frame with information for each node!
+name <- unique(c(as.character(edges$from), as.character(edges$to)))
+vertices <- data.frame(
+  name=name,
+  group=c( rep(NA,8) ,  rep( paste("group", seq(1,7), sep=""), each=7)),
+  cluster=sample(letters[1:4], length(name), replace=T),
+  value=sample(seq(10,30), length(name), replace=T)
+)
+ 
+# Create a graph object
+mygraph <- graph_from_data_frame( edges, vertices=vertices)
+```
+```{r}
+library(hasseDiagram)
+data <- matrix(data = FALSE, ncol = 16, nrow = 16)
+itemnames
+data[1, 2] = data[1, 3] = data[1, 4] = data[1, 5] = TRUE
+data[2, 6] = data[2, 7] = data[2, 8] = TRUE
+data[3, 6] = data[3, 9] = data[3, 10] = TRUE
+data[4, 7] = data[4, 9] = data[4, 11] = TRUE
+data[5, 8] = data[5, 10] = data[5, 11] = TRUE
+data[6, 12] = data[6, 13] = TRUE
+data[7, 12] = data[7, 14] = TRUE
+data[8, 13] = data[8, 14] = TRUE
+data[9, 12] = data[9, 15] = TRUE
+data[10, 13] = data[10, 15] = TRUE
+data[11, 14] = data[11, 15] = TRUE
+data[12, 16] = data[13, 16] = data[14, 16] = data[15, 16] = TRUE
+
+data[1, 6] = data[1, 7] = data[1, 8] = data[1, 9] = data[1, 10] = TRUE
+data[2, 3] = data[3, 2] = TRUE
+hasse(data, c(), list(cluster = TRUE))
+hasse(data, c(), list(cluster = FALSE))
+
+randomData <- generateRandomData(15, 2, 0.5)
+hasse(randomData)
+hasse(data, labels = itemnames)
+
+
+pdf("plots/hasse1.pdf")
+hasse(data, labels = itemnames)
+dev.off()
+```
+```{r}
+let <- letters[1:4]
+lapply(c(1:4), function(x) combn(let, m = x ))
+```
+
+```{r}
+data(Groceries)
+rules <- apriori(Groceries, parameter=list(support=0.001, confidence=0.8))
+rules
+
+## Scatterplot
+## -----------
+plot(rules)
+
+## Scatterplot with custom colors
+library(colorspace) # for sequential_hcl
+plot(rules, control = list(col=sequential_hcl(100)))
+plot(rules, col=sequential_hcl(100))
+plot(rules, col=grey.colors(50, alpha =.8))
+
+
+subrules <- subset(rules, lift>5)
+subrules2 <- sample(subrules, 25)
+# igraph layout generators can be used (see ? igraph::layout_)
+plot(subrules2, method="graph", layout=igraph::in_circle())
+plot(subrules2, method="graph", 
+  layout=igraph::with_graphopt(spring.const=5, mass=50))
+
+## Graph rendering using Graphviz
+## Not run: 
+plot(subrules2, method="graph", engine="graphviz")
+## End(Not run)
+
+## Default interactive plot (using igraph's tkplot)
+## Not run: 
+plot(subrules2, method="graph", engine = "interactive")
+## End(Not run)
+
+## Interactive graph as a html widget (using igraph layout)
+## Not run: 
+plot(subrules2, method="graph", engine="htmlwidget")
+plot(subrules2, method="graph", engine="htmlwidget", 
+  igraphLayout = "layout_in_circle")
+
+```
