@@ -1,0 +1,214 @@
+---
+title: "Frequent Pattern mining - Example 1"
+author: "Solon Ioannou"
+date: "9/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(DatabaseConnector)
+library(Eunomia)
+library(SqlRender)
+library(FeatureExtraction)
+library(ggplot2)
+library(arules)
+library(arulesSequences)
+library(arulesViz)
+library(rCBA)
+library(knitr)
+```
+
+```{r, include=FALSE}
+## Data Import
+connectionDetails <- getEunomiaConnectionDetails()
+connection <- connect(connectionDetails)
+
+cdmDatabaseSchema <- "main"
+resultsDatabaseSchema <- "main"
+```
+
+
+```{r, include=FALSE}
+sql <- "SELECT person_id AS subject_id,
+  condition_start_date AS cohort_start_date
+INTO #diagnoses
+FROM @cdm.condition_occurrence
+WHERE condition_concept_id IN (
+    SELECT descendant_concept_id
+    FROM @cdm.concept_ancestor
+    WHERE ancestor_concept_id = 4329847 -- Myocardial infarction
+)
+  AND condition_concept_id NOT IN (
+    SELECT descendant_concept_id
+    FROM @cdm.concept_ancestor
+    WHERE ancestor_concept_id = 314666 -- Old myocardial infarction
+);"
+
+renderTranslateExecuteSql(connection, sql, cdm = "main")
+```
+
+```{r, include=FALSE}
+sql <- "INSERT INTO @cdm.cohort (
+  subject_id, 
+  cohort_start_date, 
+  cohort_definition_id
+  )
+SELECT subject_id,
+  cohort_start_date,
+  CAST (1 AS INT) AS cohort_definition_id
+FROM #diagnoses
+INNER JOIN @cdm.visit_occurrence
+  ON subject_id = person_id
+    AND cohort_start_date >= visit_start_date
+    AND cohort_start_date <= visit_end_date
+WHERE visit_concept_id IN (9201, 9203, 262); -- Inpatient or ER;"
+
+renderTranslateExecuteSql(connection, sql, cdm = "main")
+```
+
+```{r, include=FALSE}
+querySql(connection, "SELECT count(*) FROM DIAGNOSES;")
+
+```
+
+```{r, include=FALSE}
+?createCovariateSettings
+?createTemporalCovariateSettings
+?createDetailedTemporalCovariateSettings
+#covariateSettings <- createDefaultTemporalCovariateSettings()
+covariateSettings1 <- createTemporalCovariateSettings(useConditionOccurrence = TRUE, 
+                                                      temporalStartDays = seq(-(5*365), -1, by = 1) ,
+                                                      temporalEndDays = seq(-(5*365)+1, 0, by = 1))
+
+?getDbCovariateData
+covariateData <- getDbCovariateData(connection = connection, cdmDatabaseSchema = cdmDatabaseSchema, cohortDatabaseSchema = resultsDatabaseSchema, cohortTable = "diagnoses", rowIdField = "subject_id", covariateSettings = covariateSettings1, cohortTableIsTemp = TRUE)
+#summary(covariateData)
+covariateData$covariates
+#class(covariateData$covariates)
+summary(covariateData$covariates)
+
+
+df <- as.data.frame(covariateData$covariates)
+unique(df$rowId)
+```
+
+```{r, include=FALSE}
+disconnect(connection)
+```
+
+## Data Preparation
+
+```{r}
+str(df)
+df <- df %>% group_by(rowId) %>% arrange(rowId, timeId)
+#df_input <- select(df, c(ID, CONCEPT_NAME))
+
+#How many conditions per person in the dataset?
+df %>% 
+  group_by(rowId) %>%
+  summarise(no_rows = length(rowId))
+
+#Average conditions per person in the dataset?
+a <- df %>% 
+  group_by(rowId) %>%
+  summarise(no_rows = length(rowId))
+
+
+# Confirming distinct values in the ID variable
+length(unique(df$rowId))
+
+df %>% 
+  group_by(rowId) %>%
+  summarise(no_rows = length(rowId)) %>% 
+  ggplot(aes(no_rows)) + geom_density()
+
+df %>% 
+  group_by(rowId) %>%
+  summarise(no_rows = length(rowId)) %>% 
+  ggplot(aes(no_rows)) + geom_histogram()
+```
+
+
+```{r}
+# Preparing dataset with temporal information
+
+trans_sequence <- df
+## Making sure everything is in the right order
+#trans_sequence <- trans_sequence[order(trans_sequence$rowId, trans_sequence$timeId)]
+trans_sequence <- trans_sequence %>% group_by(rowId, timeId) %>% arrange(rowId, timeId) %>% ungroup
+
+## Creating the eventID variable- although there exists a timeId variable given by the getTemporalCovariates function I am creating a new one as I do not know the effect of the numbering of this specific variable yet
+trans_sequence$eventID <-  sequence(rle(as.character(trans_sequence$rowId))$lengths)
+
+names(trans_sequence)
+
+## Creating the Size variable
+trans_sequence <- trans_sequence %>%
+  group_by(rowId, timeId, covariateId, covariateValue, eventID) %>%
+  summarize(
+    SIZE = n()
+  )
+
+## Adding covariate names 
+names.df <- as.data.frame(covariateData$covariateRef)
+str(names.df)
+names.df$covariateId <- as.character(names.df$covariateId)
+names.df$covariateLabel <-  str_replace(names.df$covariateName, ".*: ", "")
+trans_sequence$covariateId <- as.character(trans_sequence$covariateId)
+df_input <- inner_join(trans_sequence, names.df, by = "covariateId")
+
+# Filtering useful variables
+df_input2 <- select(df_input, c(rowId, covariateLabel, eventID, SIZE))
+#names(trans_sequence) <- c("sequenceID", "eventID", "SIZE", "items")
+df_input2 <- data.frame(lapply(df_input2, as.factor))
+
+
+#elapsed_months <- function(end_date, start_date) {
+#  ed <- as.POSIXlt(end_date)
+#  sd <- as.POSIXlt(start_date)
+#  12 * (ed$year - sd$year) + (ed$mon - sd$mon)
+#}
+
+#write.table(trans_sequence, "mytxtout.txt", sep=";", row.names = FALSE, col.names = FALSE, quote = FALSE)
+#trans_matrix <- read_baskets("mytxtout.txt", sep = ";", info = c("sequenceID","eventID","SIZE"))
+
+```
+
+```{r}
+write.table(df_input2, "../data/processed/eunomia_trans_seqs.txt", sep=";", row.names = FALSE, col.names = FALSE, quote = FALSE)
+```
+
+## Analysis
+
+```{r}
+trans_matrix <- read_baskets("../data/processed/eunomia_trans_seqs.txt", sep = ";", info = c("sequenceID","eventID","SIZE"))
+```
+
+```{r,}
+s1 <- cspade(trans_matrix, parameter = list(support = 0.5), control = list(verbose = TRUE, tidLists = TRUE))
+s1.df <- as(s1, "data.frame")
+#summary(s1)
+#summary(tidLists(s1))
+#kable(s1.df)
+#s1@elements@info
+```
+
+```{r}
+sequences <- s1 %>% 
+    .[size(., "itemsets") > 1] %>% 
+    as("data.frame") %>% 
+    arrange(desc(support))
+#kable(sequences) 
+```
+
+```{r}
+#r1 <- as(ruleInduction(s1, confidence = 0.5, control = list(verbose = TRUE)), "data.frame")
+#as.data.frame(r1)%>% arrange(desc(support)) %>% kable()
+
+
+r2 <- ruleInduction(s1, confidence = 0.5)
+r2_subset <- as(subset(r2, rhs(x) %ain% "Myocardial infarction"), "data.frame")
+r2_subset %>% arrange(desc(support)) %>% kable()
+```
