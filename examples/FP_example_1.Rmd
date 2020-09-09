@@ -147,9 +147,7 @@ names(trans_sequence)
 ## Creating the Size variable
 trans_sequence <- trans_sequence %>%
   group_by(rowId, timeId, covariateId, covariateValue, eventID) %>%
-  summarize(
-    SIZE = n()
-  )
+  summarize(SIZE = n()) %>% ungroup()
 
 ## Adding covariate names 
 names.df <- as.data.frame(covariateData$covariateRef)
@@ -158,9 +156,10 @@ names.df$covariateId <- as.character(names.df$covariateId)
 names.df$covariateLabel <-  str_replace(names.df$covariateName, ".*: ", "")
 trans_sequence$covariateId <- as.character(trans_sequence$covariateId)
 df_input <- inner_join(trans_sequence, names.df, by = "covariateId")
-
+str(df_input)
 # Filtering useful variables
 df_input2 <- select(df_input, c(rowId, covariateLabel, eventID, SIZE))
+
 #names(trans_sequence) <- c("sequenceID", "eventID", "SIZE", "items")
 df_input2 <- data.frame(lapply(df_input2, as.factor))
 
@@ -183,7 +182,7 @@ write.table(df_input2, "../data/processed/eunomia_trans_seqs.txt", sep=";", row.
 ## Analysis
 
 ```{r}
-trans_matrix <- read_baskets("../data/processed/eunomia_trans_seqs.txt", sep = ";", info = c("sequenceID","eventID","SIZE"))
+trans_matrix <- read_baskets("../data/processed/eunomia_trans_seqs.txt", sep = ";", info = c("sequenceID","eventID","SIZE", "items"))
 ```
 
 ```{r,}
