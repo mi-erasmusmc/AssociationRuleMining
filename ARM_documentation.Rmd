@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(knitr)
 library(tidyverse)
+library(arules)
 library(arulesViz)
 ```
 
@@ -64,29 +65,86 @@ exampledf <- readRDS("plots/exampledf.Rds")
 kable(exampledf[ c(1:9)])
 ```
 
-### The search space
-
-An easy way to visualize the space of possible combinations is to represent the itemsets in the form of a hasse diagram. 
-
-![The itemset lattice graph of items *'abcd'* in the form of a hasse diagram](plots/hasse1.png)
-
-
 ### Measures of association
 
 Interestingness measures are used to quantify the relations between items in a dataset. Let's have a look at some of them. 
 
 a)    1.Support *(for one item/event)*: $$supp(e_{i}) = \frac{frequency (e_i)}{N} = P(e_i)$$
-      2.Support *(between two events/sets)*: $$supp(X,Y) = P(X \cap Y) = P(X)P(Y|X)$$
+      2.Support *(between two events/sets)*: $$supp(X,Y) = P(X \cap Y) $$
 
 b)    1.Confidence: $$conf(X, Y) = \frac {P(X \cap Y)}{P(X)}$$
       2.Expected confidence: $$E(conf(X, Y)) = P(X) \cdot P(Y)$$
       
-c)    Lift: $$lift(X, Y) = \frac {conf(X, Y)}{E(conf(X, Y))} = \frac {P(X \cap Y)}{P(X) \cdot P(Y)} = \frac {P(Y|X)}{P(X)}$$
+c)    Lift: $$lift(X, Y) = \frac {supp(X, Y)}{supp(X)supp(Y)} = \frac {P(X \cap Y)}{P(X) \cdot P(Y)} = \frac {P(Y|X)}{P(X)}$$
 
-It is evident that these measures are simple boolean mathematical rules commonly widely used in mathematical algebra and logic. The list of available measures to date is much greater and we provide some of them below.
+It is evident that these measures are simple boolean mathematical rules commonly used in mathematical algebra and logic. The list of available measures to date is much greater and we provide some of them below.
 
 For more information visit [this site](https://michael.hahsler.net/research/association_rules/measures.html).
 
+### Example
+
+Let's consider the database below with with 5 transactions and 4 items. 
+
+```{r,include=FALSE}
+transactiondf <- data.frame(TransactionID = c("t1", "t2", "t3", "t4", "t5"),
+                            a = c(1, 1, 0, 1, 1), 
+                            b = c(1, 0, 1, 0, 1), 
+                            c = c(0, 1, 0, 1, 0), 
+                            d = c(1, 0, 0, 0, 0)) 
+```
+
+`r kable(transactiondf, caption = "An example database with 5 transactions and 4 items")`
+
+#### The search space
+
+An easy way to visualize the space of possible combinations is to represent the itemsets in the form of a hasse diagram. 
+
+![The itemset lattice graph of items *'abcd'* in the form of a hasse diagram](plots/hasse1.png)
+
+#### Estimating measures of association
+
+**1) Support**
+
+- *1 item*
+$$supp(a) = \frac{frequency (e_i)}{N} = \frac{4}{5} = 0.8$$
+$$ supp(b) = \frac{3}{5}$$
+$$supp(c) = \frac{2}{5}$$
+$$supp(d) = \frac{1}{5}$$
+
+- *2 items*
+
+ $$supp(a,b) = P(a \cap b) = P(a)P(b|a) = \frac{2}{5} = 0.4$$
+ $$supp(a,c) = \frac{2}{5} = 0.4$$
+
+$$supp(a,d) = \frac{1}{5} = 0.2$$
+**2) Confidence**
+
+$$conf(a, b) = \frac {P(a \cap b)}{P(a)} = \frac{2}{4} = 0.5 $$
+**2b) Expected Confidence**
+
+$$E(conf(a, b)) = P(a) \cdot P(b) = 0.8 * 0.6 = 0.48 $$
+**3) Lift**
+
+$$lift(X, Y) = \frac {supp(a, b)}{supp(a)supp(b))} = \frac {0.4}{0.48} = 0.83$$
+
+```{r, include=FALSE}
+#transactionData <- data.frame(TransactionID = c("t1", "t2", "t3", "t4", "t5"),
+#                          items = c(c("a", "b", "d"), c("a", "c"), c("b"), c("a", "c"), c("a", "b"))) 
+transactionData <- read_csv("trans_data_example.csv")
+names(transactionData) <- NULL
+tr <- transactionData[,2]
+write.csv(tr,"trans_input", quote = FALSE, row.names = FALSE)
+tr <- read.transactions('trans_input', format = 'basket', sep=',')
+```
+
+`r itemFrequencyPlot(tr, type = "absolute")`
+
+```{r, include=FALSE}
+association.rules <- apriori(tr, parameter = list(supp=0, conf = 0, maxlen=10))
+```
+
+`r kable(inspect(association.rules))`
+  
 ### Definitions
 
 **Definition 1:** Consequent and Antecedent for a rule.

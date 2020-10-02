@@ -79,11 +79,16 @@ querySql(connection, "SELECT count(*) FROM DIAGNOSES;")
 ?createDetailedTemporalCovariateSettings
 #covariateSettings <- createDefaultTemporalCovariateSettings()
 covariateSettings1 <- createTemporalCovariateSettings(useConditionOccurrence = TRUE, 
+                                                      
                                                       temporalStartDays = seq(-(5*365), -1, by = 1) ,
                                                       temporalEndDays = seq(-(5*365)+1, 0, by = 1))
 
 ?getDbCovariateData
 covariateData <- getDbCovariateData(connection = connection, cdmDatabaseSchema = cdmDatabaseSchema, cohortDatabaseSchema = resultsDatabaseSchema, cohortTable = "diagnoses", rowIdField = "subject_id", covariateSettings = covariateSettings1, cohortTableIsTemp = TRUE)
+
+getDbCovariateData(connection = connection, cdmDatabaseSchema = cdmDatabaseSchema, cohortDatabaseSchema = resultsDatabaseSchema, cohortTable = "diagnoses", rowIdField = "subject_id", covariateSettings = covariateSettings1, cohortTableIsTemp = TRUE)
+
+
 #summary(covariateData)
 covariateData$covariates
 #class(covariateData$covariates)
