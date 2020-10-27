@@ -19,6 +19,6 @@ Imports:
     arulesSequences,
     dplyr,
     SqlRender, 
-    Java
+    rJava
 Depends:
     R (>=  3.4.0)
