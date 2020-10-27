@@ -11,11 +11,11 @@ An R package under development, for mining and analysing association rules and f
 
 ## Technology
 
-AssociationRuleMining is implemented in R using packages arules and arulesSequences, which inturn accommodate functions implemented in C++.
+AssociationRuleMining is implemented in R using packages arules and arulesSequences, which in turn accommodate functions implemented in C++. The SPMF Java library has been integrated that offers a vaster range of analysis options. More to come soon..
 
 ## System Requirements
 
-Requires R (version 3.4.0 and above) and Matrix (version 1.2-0 and above).
+Requires R (version 3.4.0 and above) and Java.
 
 ## Getting Started
 
