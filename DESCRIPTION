@@ -16,4 +16,9 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports: 
     arules,
-    arulesSequences
+    arulesSequences,
+    dplyr,
+    SqlRender, 
+    Java
+Depends:
+    R (>=  3.4.0)
