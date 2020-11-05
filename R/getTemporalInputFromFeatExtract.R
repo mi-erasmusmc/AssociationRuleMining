@@ -1,4 +1,4 @@
-getInputFromFeatExtract <- function(data){
+getTemporalInputFromFeatExtract <- function(data){
   dataframe = data
   x <- dataframe %>%
     dplyr::group_by(rowId, timeId) %>%
