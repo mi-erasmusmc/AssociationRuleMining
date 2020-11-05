@@ -1,0 +1,117 @@
+---
+title: "test_releaseversion"
+author: "Solon Ioannou"
+date: "10/29/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(rJava)
+.jinit()
+.jclassPath()
+.jaddClassPath("/Users/solonioannou/Downloads/spmf.jar")
+.jclassPath()
+```
+
+```{r}
+SPAM <- .jnew("ca/pfv/spmf/algorithms/sequentialpatterns/spam/AlgoSPAM")
+
+```
+
+
+```{r}
+print(SPAM)
+.jconstructors(SPAM)
+.jmethods(SPAM)
+```
+
+```{r}
+SPADE <- .jnew("ca/pfv/spmf/algorithms/sequentialpatterns/spade_spam_AGP/AlgoSPADE")
+```
+```{r}
+prefixspan <- .jnew("ca/pfv/spmf/algorithms/sequentialpatterns/prefixspan/AlgoPrefixSpan")
+.jconstructors(prefixspan)
+.jmethods(prefixspan)
+.DollarNames(prefixspan)
+
+```
+Command line executable 
+
+```{r}
+SPMFtoR <- function(algorithm, inputFile, outputFile, minsup, showID = FALSE) {
+  
+  frequentsequencesAlgorithms <- c("SPAM", "SPADE", "prefixSpan")
+  
+  if(algorithm%in% frequentsequencesAlgorithms){
+  executable <- paste("java -jar /Users/solonioannou/Downloads/spmf.jar run", algorithm, inputFile, outputFile, minsup, showID)
+  print(executable)
+  system(executable)
+  }
+  else{
+    print("Algorithm is not supported at the moment!")
+  }
+}
+```
+
+
+```{r}
+SPMFtoR2 <- function(algorithm, inputFile, outputFile, minsup, minLength = 1 , maxLength = Inf , maxGap = Inf, showID = FALSE) {
+  
+  frequentsequencesAlgorithms <- c("SPAM", "SPADE", "prefixSpan")
+  `%notin%` <- Negate(`%in%`)
+  outputID = paste(tolower(showID))
+  maxLengthvalue = jdx::convertToJava(maxLength, scalars.as.objects = TRUE)
+  maxGapvalue = jdx::convertToJava(maxGap, scalars.as.objects = TRUE)
+  
+  if(algorithm %notin% frequentsequencesAlgorithms){
+    stop("Algorithm is not supported at the moment!")
+  }
+  message("Running algorithm")
+  
+  if (algorithm == "SPAM" ) {
+  executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, minLength, 1000, 1000, outputID)
+  } else {
+  if (algorithm == "SPADE") {
+      executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, outputID)
+  } else {
+  if (algorithm == "prefixSpan"){
+    executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, maxLength, outputID)
+      }  
+    }
+  }
+  print(executable)
+  system(executable)
+}
+```
+
+
+```{r}
+inputfile <- "/Users/solonioannou/IdeaProjects/SPMF_Algorithms/src/ca/pfv/spmf/test/contextPrefixSpan.txt"
+outputfile <- "/Users/solonioannou/Temp/SPMFoutput/output_spadefromR.txt"
+support = 0.5
+SPMFtoR2(algorithm = "whatever", inputFile = inputfile, outputFile = outputfile, minsup = support, "false")
+```
+
+```{r}
+outputfile = "/Users/solonioannou/Temp/SPMFoutput/output_spamfromR.txt"
+SPMFtoR2(algorithm = "SPAM", inputFile = inputfile, outputFile = outputfile, minsup = support)
+SPMFtoR2(algorithm = "whatever", inputFile = inputfile, outputFile = outputfile, minsup = support, "false")
+```
+
+```{r}
+library(AssociationRuleMining)
+getFrequentPatterns()
+```
+
+```{r}
+associationsinputfile <- "/Users/solonioannou/IdeaProjects/SPMF_Algorithms/src/ca/pfv/spmf/test/contextPasquier99.txt"
+associationsoutputfile <- "/Users/solonioannou/Temp/SPMFoutput/output_apriorifromR.txt"
+
+getAssociationSets("Apriori", associationsinputfile, associationsoutputfile, minsup = 0.5)
+```
+
+
