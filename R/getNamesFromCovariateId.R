@@ -1,4 +1,4 @@
-getNamesFromCovariateId <- function(data, covariateDataObject){
+getNamesFromCovariateId <- function(data, covariateDataObject, fileToSave){
   dataframe=data
   cDO = covariateDataObject
   names.df <- as.data.frame(cDO$covariateRef)
@@ -9,8 +9,8 @@ getNamesFromCovariateId <- function(data, covariateDataObject){
     arrange(conceptId) %>%
     mutate(SPMFinputId = match(covariateLabel, unique(covariateLabel)), 
            SPMFnameID = paste("@ITEM", SPMFinputId, covariateLabel2, sep = "="))
-  write.table(x = "@CONVERTED_FROM_TEXT", "data/processed/inputForSPMF/eunomia_MI.txt", quote = FALSE, row.names = FALSE, col.names = FALSE)
-  write.table(names.df$SPMFnameID, "data/processed/inputForSPMF/eunomia_MI.txt", quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
+  write.table(x = "@CONVERTED_FROM_TEXT", paste(fileToSave), quote = FALSE, row.names = FALSE, col.names = FALSE)
+  write.table(names.df$SPMFnameID, paste(fileToSave), quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
   dataframe$covariateId <- as.character(dataframe$covariateId)
   df_input <- dplyr::inner_join(dataframe, names.df, by = "covariateId")
   # Filtering useful variables

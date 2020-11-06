@@ -1,0 +1,326 @@
+---
+title: "Whole ARM and FP workflow Example 1"
+author: "Solon Ioannou"
+date: "10/29/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DatabaseConnector)
+library(SqlRender)
+library(Eunomia)
+library(FeatureExtraction)
+```
+
+## Connect to the database 
+
+```{r}
+### Define database parameters
+cdmdatabaseschema = "main"
+resultsdatabaseschema = "main"
+
+connectionDetails <- Eunomia::getEunomiaConnectionDetails()
+connection <- connect(connectionDetails)
+on.exit(DatabaseConnector::disconnect(connection)) #Close db connection on error or exit
+
+```
+
+#### Define cohort ####
+
+# There are two options for defining a cohort:
+# 1) Define the cohort in ATLAS and export the SQL file
+# 2) define it locally within R
+
+```{r}
+cohort <- readSql("data/cohorts/Eunomia_MI_cohort.sql")
+
+renderTranslateExecuteSql(connection, cohort, cdm = "main")
+
+sql <- "ALTER TABLE #diagnoses ADD cohort_definition_id INT NOT NULL DEFAULT(1)"
+
+# Execute the script to receive the data
+renderTranslateExecuteSql(connection, sql)
+
+querySql(connection, "SELECT count(*) FROM diagnoses;")
+```
+
+## Get the data and close the connection
+
+```{r}
+#### Feature Extraction ####
+covariateSettings <- createCovariateSettings(useConditionOccurrenceAnyTimePrior = TRUE, 
+                                             #includedCovariateIds = c(), 
+                                             #includedCovariateConceptIds = c()
+                                             )
+
+
+covariateData_eunomia <- getDbCovariateData(connection = connection, cdmDatabaseSchema = cdmdatabaseschema, cohortDatabaseSchema = resultsDatabaseSchema, cohortTable = "diagnoses", rowIdField = "subject_id", covariateSettings = covariateSettings, cohortTableIsTemp = TRUE)
+
+
+disconnect(connection)
+```
+
+# Association Mining
+
+## Prepare the data
+
+```{r}
+df_eunomia <- as.data.frame(covariateData_eunomia$covariates) #Assign covariates in a dataframe
+```
+
+
+```{r}
+# For the function getNamesFromCovariateId remember to add an argument for filename. This filename is the same required for the function getInputDataForAssociationRules2 bellow, which the function called right after. Therefore consider placing these two functions in one.
+
+#getNamesFromCovariateId <- function(data, covariateDataObject){
+#  dataframe=data
+#  cDO = covariateDataObject
+#  names.df <- as.data.frame(cDO$covariateRef)
+#  names.df$covariateId <- as.character(names.df$covariateId)
+#  names.df$covariateLabel <-  stringr::str_replace(names.df$covariateName, ".*: ", "")
+#  names.df$covariateLabel2 <- stringr::str_replace_all(names.df$covariateLabel, " ", "_")
+#  names.df <-names.df %>% 
+#    arrange(conceptId) %>%
+#    mutate(SPMFinputId = match(covariateLabel, unique(covariateLabel)), 
+#           SPMFnameID = paste("@ITEM", SPMFinputId, covariateLabel2, sep = "="))
+#  write.table(x = "@CONVERTED_FROM_TEXT", "data/processed/inputForSPMF/eunomia_MI.txt", quote = FALSE, #row.names = FALSE, col.names = FALSE)
+#  write.table(names.df$SPMFnameID, "data/processed/inputForSPMF/eunomia_MI.txt", quote = FALSE, row.names = #FALSE, col.names = FALSE, append = TRUE)
+#  dataframe$covariateId <- as.character(dataframe$covariateId)
+#  df_input <- dplyr::inner_join(dataframe, names.df, by = "covariateId")
+#  # Filtering useful variables
+##  df_input2 <- dplyr::select(df_input, c(rowId, eventId, SIZE, covariateLabel))
+##  return(df_input2)
+#  return(df_input)
+#}
+
+names.df <- as.data.frame(covariateData_eunomia$covariateRef)
+  #names.df$covariateId <- as.character(names.df$covariateId)
+  names.df$covariateLabel <-  stringr::str_replace(names.df$covariateName, ".*: ", "")
+  names.df %>% 
+    arrange(conceptId) %>%
+    mutate(SPMFinputId = match(covariateLabel, unique(covariateLabel)), 
+           SPMFnameID = paste("@ITEM", SPMFinputId, covariateLabel, sep = "="))  
+    
+  
+  #dataframe$covariateId <- as.character(dataframe$covariateId)
+  
+df_eunomia_2 <- getNamesFromCovariateId(df_eunomia, covariateData_eunomia)
+```
+
+
+```{r}
+# the following will tranform the dataset to the necessary input for the arules package
+library(arules)
+#getInputDataForAssociationRules <- function(data){
+#x = as(split(data[,"covariateLabel"], data[,"rowId"]), "transactions")
+#  return(x)  
+#}
+#df_eunomia_3 <- getInputDataForAssociationRules(df_eunomia_2)
+#str(df_eunomia_3)
+
+# we need to transform the dataset to the necessary input for the SPMF implementation
+str(df_eunomia_2)
+
+test <- df_eunomia_2 %>% group_by(rowId) %>% summarise(conditionbyrow = paste0(covariateLabel, collapse = " , ")) %>% select(conditionbyrow)
+write.table(test, file = "data/processed/inputForSPMF/inputforassociationsets_MI_eunomia.txt", sep = " ", quote = FALSE)
+test2 <- read.table("data/processed/inputForSPMF/inputforassociationsets_MI_eunomia.txt", sep = ";")
+test3 <- test2 %>% select(conditionbyrow)
+unique(test2$rowId)
+
+
+# Wrapping the above in a function
+
+getInputDataForAssociationRules2 <- function(data, filename){
+  if(filename == ""){
+    stop("Must declare a filename")
+  } 
+  
+  if(grepl("\\.txt$", filename)== FALSE){
+    stop("Filename should be a .txt file")
+  }
+  
+  x <- data %>%
+    dplyr::arrange(rowId, SPMFinputId) %>%
+    dplyr::group_by(rowId) %>%
+    dplyr::summarise(conditionbySPMFinputId = paste0(SPMFinputId, collapse = " ")) %>% 
+    dplyr::select(conditionbySPMFinputId) %>%
+    write.table(., file = paste(filename), col.names = FALSE, quote = FALSE, row.names = FALSE, append = TRUE)
+
+  message(paste("Input data has been created succesfully and saved in", filename))
+}
+
+
+df_eunomia_2 %>%
+    dplyr::arrange(rowId, SPMFinputId) %>%
+    dplyr::group_by(rowId) %>%
+    dplyr::summarise(conditionbySPMFinputId = paste0(SPMFinputId, collapse = " ")) %>% 
+    dplyr::select(conditionbySPMFinputId) %>%
+    write.table(., file = paste("filename.test.txt"), col.names = FALSE, quote = FALSE, row.names = FALSE, append = TRUE)
+
+
+# By running the following function our dataset is prepared an save in a file
+getInputDataForAssociationRules2(data = df_eunomia_2, filename = "data/processed/inputForSPMF/eunomia_MI.txt")
+
+```
+
+## Build algorithms
+
+The function to run the available association rule algorithms is getAssociationSets(). 
+
+```{r}
+testtable <- readLines("data/processed/inputForSPMF/eunomia_MI.txt")
+
+
+outputfile = "results/apriori_eunomia.txt"
+getAssociationSets('Apriori', inputFile = "data/processed/inputForSPMF/eunomia_MI.txt", outputFile = "results/apriori_eunomia.txt", minsup = 0.5)
+```
+
+## Results
+
+```{r}
+results.df <- read.delim("results/apriori_eunomia.txt", header = FALSE)
+results.df$Support <-  stringr::str_replace_all(results.df$V1, ".*: ", "")
+results.df$Set <- stringr::str_replace_all(results.df$V1, ".#.*", "")
+#results.df$Set <- gsub(". #.*", "", results.df$V1)
+results.df$Set <- stringr::str_replace_all(results.df$Set, " ", ", ")
+results.df$Set <- stringr::str_replace_all(results.df$Set, "_", " ") 
+results.df$Set <- stringr::str_replace_all(results.df$Set, ", $", "")
+
+# Converting the above to a function
+
+getOutputFromAssociationRules <- function(inputFile) {
+  inputfile = read.delim(inputFile, header = FALSE)
+  x <- inputfile %>%
+    mutate(Support = stringr::str_replace_all(V1, ".*: ", ""),
+           Set = stringr::str_replace_all(V1, ".#.*", ""))
+  
+  x$Set <- stringr::str_replace_all(x$Set, " ", ", ") 
+  x$Set <- stringr::str_replace_all(x$Set, "_", " ") 
+  x$Set <- stringr::str_replace_all(x$Set, ", $", "")
+  x <- dplyr::select(x, c(Set, Support))
+  return(x)
+}
+
+getOutputFromAssociationRules("results/apriori_eunomia.txt")
+
+results.df <- results.df %>%
+  mutate(Support_perc = (as.numeric(Support)/67)* 100)
+```
+
+# For comparisson implementing apriori in arules
+
+```{r}
+# Apriori set up
+ap_params <- list(
+  support = 0.5, 
+ # confidence = , 
+  minlen = 1,     #number of items per itemset
+  maxlen = 1000,    #maximal number of items per itemset 
+  arem = "chi2",  #additional rule evaluation
+  aval = TRUE,    #return additional rule measure
+  minval = 0,   #default value for minimal value of additional rule measure
+  maxtime = 0     #Disabling the limit for subset checking
+)
+arules_ap <- apriori(data = df_eunomia_3, parameter = ap_params)
+inspect(arules_ap)
+subsetRules <- which(colSums(is.subset(arules_ap, arules_ap)) > 1) # get subset rules in vector
+length(subsetRules)  #> 590
+rules <- arules_ap[-subsetRules]
+is.redundant(arules_ap)
+
+rules2 <- unique(arules_ap)
+inspect(rules2)
+
+ gi <- generatingItemsets(arules_ap)
+ d <- which(duplicated(gi))
+rules3<- arules_ap[-d]
+inspect(rules3)
+ rule_itemsets <- generatingItemsets(rules3)
+rule_itemsets@quality
+inspect(rule_itemsets)
+
+class(rule_itemsets)
+labels(rule_itemsets)
+str(rule_itemsets)
+rule_itemsets@quality$support
+rule3_df <- data.frame(ItemSets = labels(rule_itemsets), 
+                       Support = rule_itemsets@quality$support)
+rule3_df
+rule3_df$ItemSets <- stringr::str_replace_all(rule3_df$ItemSets, pattern = "^\\{|\\}$", "")
+rule3_df$ItemSets <- stringr::str_replace_all(rule3_df$ItemSets, ",", ", ")
+#stringr::str_replace_all(rule3_df$ItemSets, "[["
+ 
+length(setdiff(rule3_df$ItemSets, results.df$Set))
+length(setdiff( results.df$Set, rule3_df$ItemSets))
+identical(as.list(rule3_df$ItemSets), as.list(results.df$Set))
+rule3_df <- arrange(rule3_df, Support)
+results.df <- results.df %>%
+  mutate(Support2 = as.numeric(Support) / 67) %>%
+  arrange(Support2)
+  
+arules_rls <- as.list(rule3_df$ItemSets)
+spmf_rls <- as.list(results.df$Set)
+
+setdiff(arules_rls, spmf_rls)
+SameElements <- function(a, b) return(identical(sort(a), sort(b)))
+lapply()
+lapply(spmf_rls, function(x) SameElements(x, arules_rls))
+lapply(spmf_rls, function(x) setdiff(x, arules_rls))
+```
+
+
+
+# Frequent Pattern Mining
+
+```{r}
+# Define covariate settings
+connection <- connect(connectionDetails)
+on.exit(DatabaseConnector::disconnect(connection))
+cohort <- readSql("data/cohorts/Eunomia_MI_cohort.sql")
+
+renderTranslateExecuteSql(connection, cohort, cdm = "main")
+
+sql <- "ALTER TABLE #diagnoses ADD cohort_definition_id INT NOT NULL DEFAULT(1)"
+
+# Execute the script to receive the data
+renderTranslateExecuteSql(connection, sql)
+
+querySql(connection, "SELECT count(*) FROM diagnoses;")
+```
+
+```{r}
+TemporalcovariateSettings_eunomia <- createTemporalCovariateSettings(useConditionOccurrence = TRUE, 
+                                                      temporalStartDays = seq(-(60*365), -1, by = 1) ,
+                                                      temporalEndDays = seq(-(60*365)+1, 0, by = 1))
+
+# Extract covariates
+TemporalcovariateData_eunomia <- getDbCovariateData(connection = connection, 
+                         cdmDatabaseSchema = cdmdatabaseschema, 
+                         cohortDatabaseSchema = resultsdatabaseschema, 
+                         cohortTable = "diagnoses", 
+                         rowIdField = "subject_id", 
+                         covariateSettings = TemporalcovariateSettings_eunomia, 
+                         cohortTableIsTemp = TRUE)
+
+disconnect(connection)
+```
+
+```{r}
+
+# Here it we need a function that transforms covariate data output to the appropriate input for arules::apriori or spmf implementations for itemsets or associations
+
+Temporaldf_eunomia <- as.data.frame(TemporalcovariateData_eunomia$covariates) #Assign covariates in a dataframe
+Temporalcleandata <- getTemporalInputFromFeatExtract(Temporaldf_eunomia) # Clean and prepare dataset step 1
+names(Temporalcleandata)
+tidydata <- Temporalcleandata %>% getNamesFromCovariateId(., covariateDataObject = covariateData_eunomia) # 
+
+#ames(tidydata)
+#library(arules)
+#armdata <- select(tidydata, c(rowId, covariateLabel)) %>% getARMdata()
+#getARMdata(tidydata)
+write.table(tidydata, "data/processed/eunomia_MI_trans_seqs.txt", sep=";", row.names = FALSE, col.names = FALSE, quote = FALSE)
+TemporalData <- read_baskets("data/processed/eunomia_MI_trans_seqs.txt")
+```
+
+

@@ -1,0 +1,340 @@
+---
+title: "FP workflow - Example 1"
+author: "Solon Ioannou"
+date: "11/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DatabaseConnector)
+library(SqlRender)
+library(Eunomia)
+library(FeatureExtraction)
+```
+
+## Connect to the database 
+
+```{r}
+### Define database parameters
+cdmdatabaseschema = "main"
+resultsdatabaseschema = "main"
+
+connectionDetails <- Eunomia::getEunomiaConnectionDetails()
+connection <- connect(connectionDetails)
+on.exit(DatabaseConnector::disconnect(connection)) #Close db connection on error or exit
+
+```
+
+## Define cohort
+
+```{r}
+# Define cohort
+cohort <- readSql("data/cohorts/Eunomia_MI_cohort.sql")
+
+renderTranslateExecuteSql(connection, cohort, cdm = "main")
+
+sql <- "ALTER TABLE #diagnoses ADD cohort_definition_id INT NOT NULL DEFAULT(1)"
+
+# Execute the script to receive the data
+renderTranslateExecuteSql(connection, sql)
+
+querySql(connection, "SELECT count(*) FROM diagnoses;")
+```
+
+## Get the data and close the connection
+
+```{r}
+# Define covariate settings
+TemporalcovariateSettings_eunomia <- createTemporalCovariateSettings(useConditionOccurrence = TRUE, 
+                                                      temporalStartDays = seq(-(60*365), -1, by = 1) ,
+                                                      temporalEndDays = seq(-(60*365)+1, 0, by = 1))
+
+# Extract covariates
+TemporalcovariateData_eunomia <- getDbCovariateData(connection = connection, 
+                         cdmDatabaseSchema = cdmdatabaseschema, 
+                         cohortDatabaseSchema = resultsdatabaseschema, 
+                         cohortTable = "diagnoses", 
+                         rowIdField = "subject_id", 
+                         covariateSettings = TemporalcovariateSettings_eunomia, 
+                         cohortTableIsTemp = TRUE)
+
+disconnect(connection)
+```
+## Prepare the data
+
+```{r}
+# Here it we need a function that transforms covariate data output to the appropriate input for arules::apriori or spmf implementations for itemsets or associations
+
+Temporaldf_eunomia <- as.data.frame(TemporalcovariateData_eunomia$covariates) #Assign covariates in a dataframe
+Temporalcleandata <- getTemporalInputFromFeatExtract(Temporaldf_eunomia) # Clean and prepare dataset step 1
+names(Temporalcleandata)
+
+
+tidydata <- Temporalcleandata %>% getNamesFromCovariateId(., covariateDataObject = TemporalcovariateData_eunomia) #
+```
+
+Need to transform the tidydata object to spmf input
+
+```{r}
+# Wrapping the above in a function
+
+getInputDataForFrequentPatterns <- function(data, filename){
+  if(filename == ""){
+    stop("Must declare a filename")
+  } 
+  
+  if(grepl("\\.txt$", filename)== FALSE){
+    stop("Filename should be a .txt file")
+  }
+  
+  x <- data %>%
+    dplyr::arrange(rowId) %>%
+    dplyr::group_by(rowId) %>%
+    dplyr::summarise(sequencebySPMFinputId = paste0(SPMFinputId, collapse = " -1 ")) %>% 
+    dplyr::mutate(sequenceToSPMF = paste(sequencebySPMFinputId, "-2")) %>%
+    dplyr::select(sequenceToSPMF)  %>%
+    write.table(., file = paste(filename), col.names = FALSE, quote = FALSE, row.names = FALSE, append = TRUE)
+
+  message(paste("Input data has been created succesfully and saved in", filename))
+}
+
+
+tidydata%>%
+    dplyr::arrange(rowId, SPMFinputId) %>%
+    dplyr::group_by(rowId) %>%
+    dplyr::summarise(sequencebySPMFinputId = paste0(SPMFinputId, collapse = " -1 ")) %>% 
+    dplyr::mutate(sequenceToSPMF = paste(sequencebySPMFinputId, "-2")) %>%
+    dplyr::select(sequenceToSPMF) %>%
+    write.table(., file = paste("filename.test.txt"), col.names = FALSE, quote = FALSE, row.names = FALSE, append = TRUE)
+
+getInputDataForFrequentPatterns(data = tidydata, filename = "data/processed/inputForSPMF/eunomia_MI.txt")
+
+```
+
+## Running SPMF algorithms
+
+```{r}
+getFrequentPatterns("SPADE", inputFile = "data/processed/inputForSPMF/eunomia_MI.txt", outputFile = "results/SPADE_eunomia_MI.txt", minsup = 0.5, showID = FALSE)
+```
+```{r}
+# Converting output
+
+res.df <- read.delim("results/SPADE_eunomia_MI.txt", header = FALSE, nrows = 100)
+res.df$Support <-  stringr::str_replace_all(res.df$V1, ".*: ", "")
+res.df$Sequence <- stringr::str_replace_all(res.df$V1, ".#.*", "")
+#res.df$Set <- gsub(". #.*", "", res.df$V1)
+res.df$Sequence <- stringr::str_replace_all(res.df$Sequence, " -1", " =>")
+res.df$Sequence <- stringr::str_replace_all(res.df$Sequence, "_", " ") 
+res.df$Sequence <- stringr::str_replace_all(res.df$Sequence, "=>$", "")
+tail(res.df)
+print(res.df[100,])
+# Converting the above to a function
+
+getOutputFromFrequentPatterns <- function(inputFile) {
+  inputfile = read.delim(inputFile, header = FALSE)
+  
+  #From the code below 67 should change. in its place, number of sequence ids should be enetered
+  x <- inputfile %>%
+    mutate(Count = stringr::str_replace_all(V1, ".*: ", ""),
+           Sequence = stringr::str_replace_all(V1, ".#.*", ""), 
+           Support = as.numeric(Count)/67)
+  
+  x$Sequence <- stringr::str_replace_all(x$Sequence, " -1", " =>") 
+  x$Sequence <- stringr::str_replace_all(x$Sequence, "_", " ") 
+  x$Sequence <- stringr::str_replace_all(x$Sequence, "=>$", "")
+  x <- dplyr::select(x, c(Sequence, Count, Support))
+  return(x)
+}
+
+spmf_seqs<- getOutputFromFrequentPatterns("results/SPADE_eunomia_MI.txt")
+spmf_seqs <- spmf_seqs %>% arrange(Support)
+```
+
+
+```{r}
+#ames(tidydata)
+#library(arules)
+#armdata <- select(tidydata, c(rowId, covariateLabel)) %>% getARMdata()
+#getARMdata(tidydata)
+tidydata_arules <- tidydata %>%
+  arrange(rowId, eventId) %>%
+  ungroup() %>%
+  select(c(rowId, eventId, SIZE, covariateLabel))
+
+df_input_arules <- data.frame(lapply(tidydata_arules, as.factor))
+str(df_input_arules)
+write.table(df_input_arules, "data/processed/eunomia_MI_trans_seqs.txt", sep=";", row.names = FALSE, col.names = FALSE, quote = FALSE)
+library(arulesSequences)
+TemporalData_arules <- read_baskets("data/processed/eunomia_MI_trans_seqs.txt", info = c("sequenceID", "eventID","SIZE"), sep = ";")
+```
+
+```{r}
+inspect(TemporalData_arules)
+```
+
+
+```{r}
+# running cSPADE
+s1 <- cspade(TemporalData_arules, parameter = list(support = 0.5), control = list(verbose = TRUE, tidLists = TRUE))
+s1df <- as(s1, "data.frame")
+s1df <- s1df %>% arrange(support)
+```
+
+
+
+### wrapping in functions
+
+```{r}
+#### Preparing input ####
+getInputFileForFrequentPatterns <- function(covariateDataObject, fileToSave) {
+  if(fileToSave == ""){
+    stop("Must declare a filename")
+  } 
+  
+  if(grepl("\\.txt$", fileToSave)== FALSE){
+    stop("Filename should be a .txt file")
+  }
+  
+  if(file.exists(fileToSave)){
+    warning("File already exists!")
+    overwrite <- menu(c("Yes", "No"), title="Should it be overwritten?")  
+    if (overwrite==2){
+      stop("Operation interrupted by user. Declare a different file name or location.") 
+    }
+  }
+  
+  data <- as.data.frame(covariateDataObject$covariates)
+  
+  message("Extracting temporal data...")
+  temporalData <- getTemporalInputFromFeatExtract(data)
+  
+  message("Extracting covariate names...")
+  NamesData <- getNamesFromCovariateId(data = temporalData, covariateDataObject = covariateDataObject, fileToSave = fileToSave)
+  
+  message("Generating input file for frequent pattern mining...")
+  getInputDataForFrequentPatterns(data = NamesData, filename = fileToSave)
+}
+
+getInputFileForFrequentPatterns(TemporalcovariateData_eunomia, "testing.txt")
+
+getTemporalInputFromFeatExtract <- function(data){
+  dataframe = data
+  x <- dataframe %>%
+    dplyr::group_by(rowId, timeId) %>%
+    dplyr::arrange(rowId, timeId) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(eventId = sequence(rle(as.character(rowId))$lengths)) %>% 
+    dplyr::group_by(rowId, timeId, covariateId, covariateValue, eventId) %>%
+    dplyr::summarize(SIZE = n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(rowId, eventId, SIZE, covariateId)
+  return(x)
+}
+
+getNamesFromCovariateId <- function(data, covariateDataObject, fileToSave){
+  dataframe=data
+  cDO = covariateDataObject
+  names.df <- as.data.frame(cDO$covariateRef)
+  names.df$covariateId <- as.character(names.df$covariateId)
+  names.df$covariateLabel <-  stringr::str_replace(names.df$covariateName, ".*: ", "")
+  names.df$covariateLabel2 <- stringr::str_replace_all(names.df$covariateLabel, " ", "_")
+  names.df <-names.df %>% 
+    arrange(conceptId) %>%
+    mutate(SPMFinputId = match(covariateLabel, unique(covariateLabel)), 
+           SPMFnameID = paste("@ITEM", SPMFinputId, covariateLabel2, sep = "="))
+  write.table(x = "@CONVERTED_FROM_TEXT", paste(fileToSave), quote = FALSE, row.names = FALSE, col.names = FALSE)
+  write.table(names.df$SPMFnameID, paste(fileToSave), quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
+  dataframe$covariateId <- as.character(dataframe$covariateId)
+  df_input <- dplyr::inner_join(dataframe, names.df, by = "covariateId")
+  # Filtering useful variables
+  #  df_input2 <- dplyr::select(df_input, c(rowId, eventId, SIZE, covariateLabel))
+  #  return(df_input2)
+  return(df_input)
+}
+
+getInputDataForFrequentPatterns <- function(data, filename){
+  if(filename == ""){
+    stop("Must declare a filename")
+  } 
+  
+  if(grepl("\\.txt$", filename)== FALSE){
+    stop("Filename should be a .txt file")
+  }
+  
+  x <- data %>%
+    dplyr::arrange(rowId) %>%
+    dplyr::group_by(rowId) %>%
+    dplyr::summarise(sequencebySPMFinputId = paste0(SPMFinputId, collapse = " -1 ")) %>% 
+    dplyr::mutate(sequenceToSPMF = paste(sequencebySPMFinputId, "-2")) %>%
+    dplyr::select(sequenceToSPMF)  %>%
+    write.table(., file = paste(filename), col.names = FALSE, quote = FALSE, row.names = FALSE, append = TRUE)
+  
+  message(paste("Input data has been created succesfully and saved in", filename))
+}
+
+#### Prepating output part  ####
+
+getFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, minLength = 1 , maxLength = Inf , maxGap = Inf, showID = FALSE) {
+  
+  frequentsequencesAlgorithms <- c("SPAM", "SPADE", "prefixSpan")
+  `%notin%` <- Negate(`%in%`)
+  outputID = paste(tolower(showID))
+  #maxLengthvalue = jdx::convertToJava(maxLength, scalars.as.objects = TRUE)
+  #maxGapvalue = jdx::convertToJava(maxGap, scalars.as.objects = TRUE)
+  maxLengthvalue = 1000
+  maxGapvalue = 1000
+  
+  if(algorithm %notin% frequentsequencesAlgorithms){
+    stop("Algorithm is not supported at the moment!")
+  }
+  message("Running algorithm")
+  
+  #Below I replaced the Inf values for maxLength and maxGap with 1000 since Inf is not a Java object for SPAM and prefixSpan
+  if (algorithm == "SPAM" ) {
+    executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, minLength, 1000, 1000, outputID)
+  } else {
+    if (algorithm == "SPADE") {
+      executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, outputID)
+    } else {
+      if (algorithm == "prefixSpan"){
+        executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, 1000, outputID)
+      }  
+    }
+  }
+  message(paste("The command line that has been running is:", print(executable)))
+  system(executable)
+}
+
+getOutputFromFrequentPatterns <- function(inputFile, numberOfSequenceIDs) {
+  inputfile = read.delim(inputFile, header = FALSE)
+  
+  #From the code below 67 should change. in its place, number of sequence ids should be enetered
+  x <- inputfile %>%
+    mutate(Count = stringr::str_replace_all(V1, ".*: ", ""),
+           Sequence = stringr::str_replace_all(V1, ".#.*", ""), 
+           Support = as.numeric(Count)/numberOfSequenceIDs)
+  
+  x$Sequence <- stringr::str_replace_all(x$Sequence, " -1", " =>") 
+  x$Sequence <- stringr::str_replace_all(x$Sequence, "_", " ") 
+  x$Sequence <- stringr::str_replace_all(x$Sequence, "=>$", "")
+  x <- dplyr::select(x, c(Sequence, Count, Support))
+  return(x)
+}
+
+runFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, minLength = 1 , maxLength = Inf , maxGap = Inf, showID = FALSE) {
+  datafile <- read.delim(paste(inputFile), header = FALSE, blank.lines.skip = TRUE, comment.char = "@")
+  noTIDs <- nrow(datafile)
+  
+  message(paste("Analysing", noTIDs, "sequence IDs...", sep = " "))
+  
+  message("Running frequent pattern algorithm...")
+  getFrequentPatterns(algorithm, inputFile = inputFile, outputFile = outputFile, minsup = minsup, showID = showID)
+  
+  getOutputFromFrequentPatterns(inputFile = outputFile, numberOfSequenceIDs = noTIDs)
+}
+
+testfp <- runFrequentPatterns("SPADE", inputFile = "testing.txt", outputFile = "results/SPADE_eunomia_MI.txt", minsup = 0.5, showID = FALSE)
+
+```
+
