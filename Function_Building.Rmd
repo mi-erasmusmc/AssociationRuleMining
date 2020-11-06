@@ -1,0 +1,254 @@
+---
+title: "Untitled"
+author: "Solon Ioannou"
+date: "10/14/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DatabaseConnector)
+library(SqlRender)
+```
+
+```{r}
+connectionDetails <- Eunomia::getEunomiaConnectionDetails()
+connection <- connect(connectionDetails)
+on.exit(DatabaseConnector::disconnect(connection)) #Close db connection on error or exit
+
+```
+
+
+
+```{r}
+# Preferably, the code below should be define in a separate SQL script and call the script through a function in R. For now I live as it is. 
+df <- querySql(connection, "
+SELECT cond.PERSON_ID AS ID, CONDITION_CONCEPT_ID, CONDITION_SOURCE_VALUE, cond.VISIT_OCCURRENCE_ID, cond.CONDITION_START_DATE, cond.CONDITION_END_DATE, conc.CONCEPT_NAME  
+FROM condition_occurrence AS cond 
+INNER JOIN CONCEPT AS conc 
+ON CONDITION_CONCEPT_ID = CONCEPT_ID; ")
+```
+
+# Non-temporal data - Association rule mining
+
+Below is a script for transforming cdm extracted data to appropriate input format data for ARM in arules R package.  
+
+```{r}
+# Preparing dataset without temporal information
+df_input <- as.data.frame(df_input)
+class(df_input)
+trans_sets <- as(split(df_input[,"covariateId"], df_input[,"rowId"]), "transactions")
+
+getARMdata <- function(data){
+  data = data
+  x = as(split(data[,"covariateId"], data[,"rowId"]), "transactions")
+}
+
+
+```
+
+# Temporal Data - Frequent Pattern Mining
+
+## Custom functions
+
+```{r}
+#creating a function to extract all medical history
+cdmDatabaseSchema = "main"
+
+createDbWithFullHistory <- function(connectionDetails, cdmDatabaseSchema, resultsDatabaseSchema, cohortTableSchema) {
+  conn <- DatabaseConnector::connect(connectionDetails)
+  
+  sql <- SqlRender::loadRenderTranslateSql(sqlFilename = 'getAllConditions.sql', 
+                                           packageName = "AssociationRuleMining",
+                                           dbms = conn@dbms, 
+                                           oracleTempSchema = NULL, 
+                                           cdmDatabaseSchema = cdmDatabaseSchema,
+                                           resultsDatabaseSchema = resultsDatabaseSchema, 
+                                           cohortTableSchema = cohortTableSchema, 
+                                           resultsDatabaseSchema = "main")
+  
+  DatabaseConnector::executeSql(conn, sql=sql, profile=F, progressBar = TRUE, reportOverallTime = TRUE)
+  
+ # x <- SqlRender::querySql(conn, "SELECT * FROM sioannou.#getallconditions2;" )
+  DatabaseConnector::disconect(connection)
+}
+
+```
+
+```{r}
+# Previously the code to convert to the appropriate input for 
+str(df)
+trans_sequence <- df %>%
+  dplyr::group_by(ID, CONDITION_START_DATE) %>%
+  dplyr::summarize(SIZE = dplyr::n(),
+    CONCEPT = paste(as.character(CONCEPT_NAME), collapse = ';')
+  )
+
+trans_sequence$eventID <-  sequence(rle(as.character(trans_sequence$ID))$lengths)
+
+trans_sequence <- select(trans_sequence, c(ID, eventID, SIZE, CONCEPT ))
+names(trans_sequence) <- c("sequenceID", "eventID", "SIZE", "items")
+trans_sequence <- data.frame(lapply(trans_sequence, as.factor))
+trans_sequence <- trans_sequence[order(trans_sequence$sequenceID, trans_sequence$eventID),]
+```
+
+
+```{r}
+
+#The following function has been changed to getInputFromCustomDataForFP
+getCustomFPdata <- function(data = data){
+  dataframe = data
+  x <- dataframe %>%
+  dplyr::group_by(ID, CONDITION_START_DATE) %>%
+  dplyr::summarize(SIZE = dplyr::n(),
+    CONCEPT = paste(as.character(CONCEPT_NAME), collapse = ';')) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(eventId = sequence(rle(as.character(ID))$lengths)) %>%
+  dplyr::select(ID, eventId, SIZE, CONCEPT) %>%
+  dplyr::rename(sequenceID = ID, 
+                items = CONCEPT) %>%
+  dplyr::arrange(sequenceID, eventId)
+      
+  return(x)
+                  
+}
+
+test3 <- getCustomFPdata(df)
+str(test3)
+```
+
+
+## Feature extraction functions
+
+The chunk below contains the code used to convert data from the output of Feature extraction to the required input for the SPADE algorithm from aruleSequences package in R. 
+
+```{r}
+trans_sequence <- df_eunomia
+## Making sure everything is in the right order
+#trans_sequence <- trans_sequence[order(trans_sequence$rowId, trans_sequence$timeId)]
+trans_sequence <- trans_sequence %>% 
+  group_by(rowId, timeId) %>% 
+  arrange(rowId, timeId) %>% 
+  ungroup
+
+## Creating the eventID variable- although there exists a timeId variable given by the getTemporalCovariates function ,
+## I am creating a new one as I do not know the effect of the numbering of this specific variable yet
+trans_sequence$eventID <-  sequence(rle(as.character(trans_sequence$rowId))$lengths)
+
+names(trans_sequence)
+
+## Creating the Size variable
+trans_sequence <- trans_sequence %>%
+  group_by(rowId, timeId, covariateId, covariateValue, eventID) %>%
+  summarize(SIZE = n()) %>% ungroup()
+
+## extracting covariate names 
+names.df <- as.data.frame(covariateData_eunomia$covariateRef)
+str(names.df)
+names.df$covariateId <- as.character(names.df$covariateId)
+names.df$covariateLabel <-  str_replace(names.df$covariateName, ".*: ", "")
+trans_sequence$covariateId <- as.character(trans_sequence$covariateId)
+df_input <- inner_join(trans_sequence, names.df, by = "covariateId")
+str(df_input)
+# Filtering useful variables
+df_input2 <- select(df_input, c(rowId, covariateLabel, eventID, SIZE))
+
+#names(trans_sequence) <- c("sequenceID", "eventID", "SIZE", "items")
+str(df_input2)
+df_input2$eventID <- as.numeric(df_input2$eventID)
+df_input2$SIZE <- as.numeric(df_input2$SIZE)
+#df_input2 <- data.frame(lapply(df_input2, as.factor))
+df_input2 <- df_input2 %>% arrange(rowId, eventID)
+```
+
+We now wrap the above in two functions. 
+
+```{r}
+getInputFromFeatExtract <- function(data = data){
+  dataframe = data
+  x <- dataframe %>%
+    dplyr::group_by(rowId, timeId) %>%
+    dplyr::arrange(rowId, timeId) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(eventId = sequence(rle(as.character(rowId))$lengths)) %>% 
+    dplyr::group_by(rowId, timeId, covariateId, covariateValue, eventId) %>%
+    dplyr::summarize(SIZE = n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(rowId, eventId, SIZE, covariateId)
+  return(x)
+}
+
+test <- getInputFromFeatExtract(df_eunomia)
+```
+
+```{r}
+getNamesFromCovaiateId <- function(data, covariateDataObject){
+  dataframe=data
+  cDO = covariateDataObject
+  names.df <- as.data.frame(cDO$covariateRef)
+  names.df$covariateId <- as.character(names.df$covariateId)
+  names.df$covariateLabel <-  str_replace(names.df$covariateName, ".*: ", "")
+  dataframe$covariateId <- as.character(dataframe$covariateId)
+  df_input <- inner_join(trans_sequence, names.df, by = "covariateId")
+# Filtering useful variables
+df_input2 <- select(df_input, c(rowId, eventID, SIZE, covariateLabel))
+    return(df_input2)
+}
+
+test2 <- getNamesFromCovaiateId(data = test, covariateDataObject = covariateData_eunomia)
+
+str(test)
+str(test2)
+```
+
+
+```{r}
+#### Converting and saving data object to transactions class ####
+
+# Reordering variables
+names(df_input2)
+df_input2 <- df_input2[, c(1, 3, 4, 2)]
+
+write.table(df_input2, "data/processed/eunomia_example_workflow.txt", 
+            sep=";", 
+            row.names = FALSE, 
+            col.names = FALSE, 
+            quote = FALSE)
+
+
+#### Analysis ####
+
+# Load dataset
+
+
+trans_matrix <- read_baskets("data/processed/eunomia_example_workflow.txt", 
+                             sep = ";", 
+                             info = c("sequenceID", "eventID","SIZE"))
+
+str(trans_matrix)
+```
+
+```{r}
+str(test3)
+write.table(test3, "data/processed/test3.txt", 
+            sep=";", 
+            row.names = FALSE, 
+            col.names = FALSE, 
+            quote = FALSE)
+
+
+#### Analysis ####
+
+# Load dataset
+
+
+test3_trans_matrix <- read_baskets("data/processed/test3.txt", 
+                             sep = ";", 
+                             info = c("sequenceID", "eventID","SIZE"))
+
+
+s1_test3 <- cspade(test3_trans_matrix, parameter = list(support =0.05), control = list(summary = TRUE, tidLists = TRUE))
+
+s1_test3_df <- as(s1_test3, "data.frame")
+```
+
