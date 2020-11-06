@@ -1,0 +1,265 @@
+---
+title: "Mining Frequent Patterns - Example 1"
+author: "Solon Ioannou"
+date: "11/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(results = 'hide', cache = TRUE)
+library(DatabaseConnector)
+library(SqlRender)
+library(Eunomia)
+library(FeatureExtraction)
+library(knitr)
+library(kableExtra)
+library(arulesSequences)
+```
+
+### Connect to the database 
+
+```{r}
+### Define database parameters
+cdmdatabaseschema = "main"
+resultsdatabaseschema = "main"
+
+connectionDetails <- Eunomia::getEunomiaConnectionDetails()
+connection <- connect(connectionDetails)
+#on.exit(DatabaseConnector::disconnect(connection)) #Close db connection on error or exit
+
+```
+
+### Define cohort
+
+```{r}
+# Define cohort
+cohort <- readSql("data/cohorts/Eunomia_MI_cohort.sql")
+
+renderTranslateExecuteSql(connection, cohort, cdm = "main")
+
+sql <- "ALTER TABLE #diagnoses ADD cohort_definition_id INT NOT NULL DEFAULT(1)"
+
+# Execute the script to receive the data
+renderTranslateExecuteSql(connection, sql)
+
+querySql(connection, "SELECT count(*) FROM diagnoses;")
+```
+
+### Get the data and close the connection
+
+```{r}
+# Define covariate settings
+TemporalcovariateSettings_eunomia <- createTemporalCovariateSettings(useConditionOccurrence = TRUE, 
+                                                      temporalStartDays = seq(-(60*365), -1, by = 1) ,
+                                                      temporalEndDays = seq(-(60*365)+1, 0, by = 1))
+
+# Extract covariates
+TemporalcovariateData_eunomia <- getDbCovariateData(connection = connection, 
+                         cdmDatabaseSchema = cdmdatabaseschema, 
+                         cohortDatabaseSchema = resultsdatabaseschema, 
+                         cohortTable = "diagnoses", 
+                         rowIdField = "subject_id", 
+                         covariateSettings = TemporalcovariateSettings_eunomia, 
+                         cohortTableIsTemp = TRUE)
+
+disconnect(connection)
+```
+
+### Prepare the data
+
+```{r, include=FALSE}
+getTemporalInputFromFeatExtract <- function(data){
+  dataframe = data
+  x <- dataframe %>%
+    dplyr::group_by(rowId, timeId) %>%
+    dplyr::arrange(rowId, timeId) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(eventId = sequence(rle(as.character(rowId))$lengths)) %>% 
+    dplyr::group_by(rowId, timeId, covariateId, covariateValue, eventId) %>%
+    dplyr::summarize(SIZE = n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(rowId, eventId, SIZE, covariateId)
+  return(x)
+}
+
+getNamesFromCovariateId <- function(data, covariateDataObject){
+  dataframe=data
+  cDO = covariateDataObject
+  names.df <- as.data.frame(cDO$covariateRef)
+  names.df$covariateId <- as.character(names.df$covariateId)
+  names.df$covariateLabel <-  stringr::str_replace(names.df$covariateName, ".*: ", "")
+  names.df$covariateLabel2 <- stringr::str_replace_all(names.df$covariateLabel, " ", "_")
+  names.df <-names.df %>% 
+    arrange(conceptId) %>%
+    mutate(SPMFinputId = match(covariateLabel, unique(covariateLabel)), 
+           SPMFnameID = paste("@ITEM", SPMFinputId, covariateLabel2, sep = "="))
+  write.table(x = "@CONVERTED_FROM_TEXT", "data/processed/inputForSPMF/eunomia_MI.txt", quote = FALSE, row.names = FALSE, col.names = FALSE)
+  write.table(names.df$SPMFnameID, "data/processed/inputForSPMF/eunomia_MI.txt", quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
+  dataframe$covariateId <- as.character(dataframe$covariateId)
+  df_input <- dplyr::inner_join(dataframe, names.df, by = "covariateId")
+  # Filtering useful variables
+  #  df_input2 <- dplyr::select(df_input, c(rowId, eventId, SIZE, covariateLabel))
+  #  return(df_input2)
+  return(df_input)
+}
+
+getInputDataForFrequentPatterns <- function(data, filename){
+  if(filename == ""){
+    stop("Must declare a filename")
+  } 
+  
+  if(grepl("\\.txt$", filename)== FALSE){
+    stop("Filename should be a .txt file")
+  }
+  
+  x <- data %>%
+    dplyr::arrange(rowId) %>%
+    dplyr::group_by(rowId) %>%
+    dplyr::summarise(sequencebySPMFinputId = paste0(SPMFinputId, collapse = " -1 ")) %>% 
+    dplyr::mutate(sequenceToSPMF = paste(sequencebySPMFinputId, "-2")) %>%
+    dplyr::select(sequenceToSPMF)  %>%
+    write.table(., file = paste(filename), col.names = FALSE, quote = FALSE, row.names = FALSE, append = TRUE)
+
+  message(paste("Input data has been created succesfully and saved in", filename))
+}
+
+getFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, minLength = 1 , maxLength = Inf , maxGap = Inf, showID = FALSE) {
+  
+  frequentsequencesAlgorithms <- c("SPAM", "SPADE", "prefixSpan")
+  `%notin%` <- Negate(`%in%`)
+  outputID = paste(tolower(showID))
+  #maxLengthvalue = jdx::convertToJava(maxLength, scalars.as.objects = TRUE)
+  #maxGapvalue = jdx::convertToJava(maxGap, scalars.as.objects = TRUE)
+  maxLengthvalue = 1000
+  maxGapvalue = 1000
+  
+  if(algorithm %notin% frequentsequencesAlgorithms){
+    stop("Algorithm is not supported at the moment!")
+  }
+  message("Running algorithm")
+  
+  #Below I replaced the Inf values for maxLength and maxGap with 1000 since Inf is not a Java object for SPAM and prefixSpan
+  if (algorithm == "SPAM" ) {
+    executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, minLength, 1000, 1000, outputID)
+  } else {
+    if (algorithm == "SPADE") {
+      executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, outputID)
+    } else {
+      if (algorithm == "prefixSpan"){
+        executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, 1000, outputID)
+      }  
+    }
+  }
+  message(paste("The command line that has been running is:", print(executable)))
+  system(executable)
+}
+
+getOutputFromFrequentPatterns <- function(inputFile) {
+  inputfile = read.delim(inputFile, header = FALSE)
+  
+  #From the code below 67 should change. in its place, number of sequence ids should be enetered
+  x <- inputfile %>%
+    mutate(Count = stringr::str_replace_all(V1, ".*: ", ""),
+           Sequence = stringr::str_replace_all(V1, ".#.*", ""), 
+           Support = as.numeric(Count)/67)
+  
+  x$Sequence <- stringr::str_replace_all(x$Sequence, " -1", " =>") 
+  x$Sequence <- stringr::str_replace_all(x$Sequence, "_", " ") 
+  x$Sequence <- stringr::str_replace_all(x$Sequence, "=>$", "")
+  x <- dplyr::select(x, c(Sequence, Count, Support))
+  return(x)
+}
+
+```
+
+
+```{r}
+# Here it we need a function that transforms covariate data output to the appropriate input for arules::apriori or spmf implementations for itemsets or associations
+
+Temporaldf_eunomia <- as.data.frame(TemporalcovariateData_eunomia$covariates) #Assign covariates in a dataframe
+Temporalcleandata <- getTemporalInputFromFeatExtract(Temporaldf_eunomia) # Clean and prepare dataset step 1
+tidydata <- Temporalcleandata %>% getNamesFromCovariateId(., covariateDataObject = TemporalcovariateData_eunomia) 
+```
+
+```{r, echo=TRUE}
+getInputDataForFrequentPatterns(data = tidydata, filename = "data/processed/inputForSPMF/eunomia_MI.txt")
+```
+
+## Running SPMF algorithms
+
+```{r,echo=TRUE}
+getFrequentPatterns("SPADE", inputFile = "data/processed/inputForSPMF/eunomia_MI.txt", outputFile = "results/SPADE_eunomia_MI.txt", minsup = 0.5, showID = FALSE)
+```
+```{r}
+# Converting output
+spmf_seqs<- getOutputFromFrequentPatterns("results/SPADE_eunomia_MI.txt", 67)
+spmf_seqs <- spmf_seqs %>% arrange(desc(Support))
+rulesWithSpmf <- nrow(spmf_seqs)
+```
+
+`r kable(spmf_seqs) %>% scroll_box(width = "100%", height = "400px") %>% kable_paper("striped")`
+
+### Running cspade for comparisson
+
+```{r, echo}
+tidydata_arules <- tidydata %>%
+  arrange(rowId, eventId) %>%
+  ungroup() %>%
+  select(c(rowId, eventId, SIZE, covariateLabel))
+
+df_input_arules <- data.frame(lapply(tidydata_arules, as.factor))
+str(df_input_arules)
+write.table(df_input_arules, "data/processed/eunomia_MI_trans_seqs.txt", sep=";", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+TemporalData_arules <- read_baskets("data/processed/eunomia_MI_trans_seqs.txt", info = c("sequenceID", "eventID","SIZE"), sep = ";")
+```
+
+```{r, include=FALSE}
+#inspect(TemporalData_arules)
+```
+
+
+```{r}
+# running cSPADE
+s1 <- cspade(TemporalData_arules, parameter = list(support = 0.5), control = list(verbose = TRUE, tidLists = TRUE))
+s1df <- as(s1, "data.frame")
+s1df <- s1df %>% arrange(desc(support))
+rulesWithArules <- nrow(s1df)
+```
+
+`r kable(s1df) %>% scroll_box(width = "100%", height = "400px") %>% kable_paper("striped")`
+
+### Benchmarking 
+
+```{r, include=FALSE}
+#library(microbenchmark)
+#
+#mbm <- microbenchmark("spmf" = { getFrequentPatterns("SPADE", inputFile = #"data/processed/inputForSPMF/eunomia_MI.txt", outputFile = "results/SPADE_eunomia_MI.txt", minsup = 0.5, showID #= FALSE) }, 
+#                      "arulesSequences" = { cspade(TemporalData_arules, parameter = list(support = 0.5), #control = list(verbose = TRUE, tidLists = TRUE)) })
+#
+#mbm
+#library(ggplot2)
+#plot <- autoplot(mbm)
+#
+#ggsave(plot = plot, "plots/microbenchmark_FP.png" )
+mbm_1 <- readRDS("benchmark_SPADE.Rds")
+mbm_1 <- as.data.frame(summary(mbm_1))
+class(mbm_1)
+```
+  
+#### Number of rules generated  
+  
+`r kable(cbind(rulesWithSpmf, rulesWithArules), col.names = c("SPMF", "Arules"), table.attr = "style='width:30%;'", align = "cc") %>% kable_styling()`
+  
+#### Running times  
+  
+
+```{r, results='asis'}
+library(knitr)
+kable(print(mbm_1), "html")
+```
+
+`r kable(mbm_1, "html")`
+  
+![Figure 1: Results of microbenchmarking between arulesSequences::cspade and AssociationRuleMining::SPADE](plots/microbenchmark_FP.png)  
+
