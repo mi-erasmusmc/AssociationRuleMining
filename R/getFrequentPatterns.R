@@ -15,13 +15,13 @@ getFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, minLen
   
   #Below I replaced the Inf values for maxLength and maxGap with 1000 since Inf is not a Java object for SPAM and prefixSpan
   if (algorithm == "SPAM" ) {
-    executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, minLength, 1000, 1000, outputID)
+    executable <- paste("java -jar ../inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, minLength, 1000, 1000, outputID)
   } else {
     if (algorithm == "SPADE") {
-      executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, outputID)
+      executable <- paste("java -jar ../inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, outputID)
     } else {
       if (algorithm == "prefixSpan"){
-        executable <- paste("java -jar ./inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, 1000, outputID)
+        executable <- paste("java -jar ../inst/java/spmf.jar run", algorithm, inputFile, outputFile, minsup, 1000, outputID)
       }  
     }
   }
