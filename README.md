@@ -19,7 +19,7 @@ Requires R (version 3.4.0 and above) and Java.
 
 ## Getting Started
 
-- Please read [An example to extract frequent patterns](https://github.com/mi-erasmusmc/AssociationRuleMining/doc/FPexample.html).
+- Please read [An example to extract frequent patterns](https://github.com/mi-erasmusmc/AssociationRuleMining/examples/ExampleWorkflow.pdf).
 
 ## User Documentation
 
