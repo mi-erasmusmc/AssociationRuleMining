@@ -7,5 +7,5 @@ runFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, minLen
   message("Running frequent pattern algorithm...")
   getFrequentPatterns(algorithm, inputFile = inputFile, outputFile = outputFile, minsup = minsup, showID = showID)
   
-  getOutputFromFrequentPatterns(inputFile = outputFile, numberOfSequenceIDs = noTIDs)
+  getOutputFromFrequentPatterns(inputFile = outputFile, numberOfSequenceIDs = noTIDs, showID)
 }
