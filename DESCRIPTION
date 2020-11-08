@@ -19,6 +19,11 @@ Imports:
     arulesSequences,
     dplyr,
     SqlRender, 
-    rJava
+    rJava, 
+    tidyr
 Depends:
     R (>=  3.4.0)
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
