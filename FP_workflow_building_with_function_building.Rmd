@@ -338,3 +338,38 @@ testfp <- runFrequentPatterns("SPADE", inputFile = "testing.txt", outputFile = "
 
 ```
 
+```{r}
+ inputfile = read.delim("results_examplel.txt", header = FALSE)
+idtest <- stringr::str_replace_all(inputfile$V1, ".*SID: ", "")
+seqs <- stringr::str_replace_all(inputfile$V1, ".#.*", "")
+iddf<- data.frame(seqs, idtest)
+iddf_test <- separate_rows(iddf, idtest, sep = " ")
+
+
+iddf_final <- iddf_test %>% mutate(val=1) %>% pivot_wider(names_from = seqs,values_from = val) %>% 
+  mutate(across(-idtest, ~replace_na(.x, 0))) %>%
+  mutate(across(-idtest, ~ifelse(.x==1, TRUE,FALSE)))
+
+
+
+eval <- str_count(idtest, "[^0-9]")
+eval1 <- eval +1
+sum(eval1)
+```
+
+```{r}
+getIdDataFrame <- function(inputFile){
+    inputfile = read.delim(inputFile, header = FALSE)
+  y <- inputfile %>%
+    mutate(id = stringr::str_replace_all(V1, ".*SID: ", ""), 
+           Seqs = stringr::str_replace_all(V1, ".#.*", "")) %>%
+    select(Seqs, id) %>%
+    separate_rows(id, sep = " ") %>%
+    mutate(val=1) %>% 
+    pivot_wider(names_from = Seqs, values_from = val) %>% 
+    mutate(across(-id, ~replace_na(.x, 0)))
+  return(y)
+}
+
+testiddf <- getIdDataFrame("results_examplel.txt")
+```
