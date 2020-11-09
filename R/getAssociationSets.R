@@ -1,6 +1,6 @@
 getAssociationSets <- function(algorithm, inputFile, outputFile, minsup, showID = FALSE) {
   
-  spmf.dir <- .jclassPath()[str_ends(.jclassPath(), "spmf.jar")]
+  spmf.dir <- rJava::.jclassPath()[stringr::str_ends(rJava::.jclassPath(), "spmf.jar")]
   associationAlgorithms <- c("Apriori", "Eclat", "FP-Growth", "Relim")
   `%notin%` <- Negate(`%in%`)
   outputID = paste(tolower(showID))

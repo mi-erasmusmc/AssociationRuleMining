@@ -1,6 +1,6 @@
 getFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, minLength = 1 , maxLength = Inf , maxGap = Inf, showID = FALSE) {
   
-  spmf.dir <- .jclassPath()[str_ends(.jclassPath(), "spmf.jar")]
+  spmf.dir <- rJava::.jclassPath()[stringr::str_ends(rJava::.jclassPath(), "spmf.jar")]
   frequentsequencesAlgorithms <- c("SPAM", "SPADE", "prefixSpan")
   `%notin%` <- Negate(`%in%`)
   outputID = paste(tolower(showID))
