@@ -2,10 +2,11 @@ runFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, minLen
   datafile <- read.delim(paste(inputFile), header = FALSE, blank.lines.skip = TRUE, comment.char = "@")
   noTIDs <- nrow(datafile)
   
-  message(paste("Analysing", noTIDs, "sequence IDs...", sep = " "))
+  cat(paste("Analysing", noTIDs, "sequence IDs...", sep = " "))
   
-  message("Running frequent pattern algorithm...")
+  cat("Running frequent pattern algorithm...")
   getFrequentPatterns(algorithm, inputFile = inputFile, outputFile = outputFile, minsup = minsup, showID = showID)
   
+  cat("Preparing output...")
   getOutputFromFrequentPatterns(inputFile = outputFile, numberOfSequenceIDs = noTIDs, showID)
 }

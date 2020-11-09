@@ -3,9 +3,11 @@ runAssociationRules <- function(algorithm, inputFile, outputFile, minsup, showID
   datafile <- read.delim(paste(inputFile), header = FALSE, blank.lines.skip = TRUE, comment.char = "@")
   noTIDs <- nrow(datafile)
   
-  message(paste("Analysing", noTIDs, "transaction IDs...", sep = " "))
+  cat(paste("Analysing", noTIDs, "transaction IDs...", sep = " "))
   
+  cat("Running Association Rules Algorithm...")
   getAssociationSets(algorithm, inputFile, outputFile, minsup, showID = FALSE)
   
+  cat("Preparing output...")
   getOutputFromAssociationRules(outputFile, noTIDs)
 }
