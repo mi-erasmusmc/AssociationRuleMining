@@ -14,7 +14,9 @@ library(SqlRender)
 library(Eunomia)
 library(FeatureExtraction)
 library(AssociationRuleMining)
-library(tidyr)
+#library(tidyr)
+#library(rJava)
+#library(stringr)
 devtools::load_all()
 ```
 
