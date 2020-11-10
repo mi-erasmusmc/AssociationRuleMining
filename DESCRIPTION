@@ -15,10 +15,14 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports: 
-    arules,
-    arulesSequences,
     dplyr,
     SqlRender, 
-    rJava
+    rJava, 
+    tidyr, 
+    stringr
 Depends:
     R (>=  3.4.0)
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

@@ -1,9 +1,9 @@
 getOutputFromAssociationRules <- function(inputFile, numberOfTransactionIDs) {
   inputfile = read.delim(inputFile, header = FALSE)
   x <- inputfile %>%
-    mutate(Count = stringr::str_replace_all(V1, ".*: ", ""),
-           Set = stringr::str_replace_all(V1, ".#.*", ""), 
-           Support = as.numeric(Count)/numberOfTransactionIDs)
+    dplyr::mutate(Count = stringr::str_replace_all(V1, ".*: ", ""),
+                  Set = stringr::str_replace_all(V1, ".#.*", ""), 
+                  Support = as.numeric(Count)/numberOfTransactionIDs)
   
   x$Set <- stringr::str_replace_all(x$Set, " ", ", ") 
   x$Set <- stringr::str_replace_all(x$Set, "_", " ") 
