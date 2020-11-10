@@ -42,12 +42,32 @@ prefixspan <- .jnew("ca/pfv/spmf/algorithms/sequentialpatterns/prefixspan/AlgoPr
 Command line executable 
 
 ```{r}
+thisFile <- function() {
+        cmdArgs <- commandArgs(trailingOnly = FALSE)
+        needle <- "--file="
+        match <- grep(needle, cmdArgs)
+        if (length(match) > 0) {
+                # Rscript
+                return(normalizePath(sub(needle, "", cmdArgs[match])))
+        } else {
+                # 'source'd via R console
+                return(normalizePath(sys.frames()[[1]]$ofile))
+        }
+}
+file.path(dirname(thisFile()), "spmf.jar")
+thisFile()
+```
+
+
+```{r}
 SPMFtoR <- function(algorithm, inputFile, outputFile, minsup, showID = FALSE) {
   
   frequentsequencesAlgorithms <- c("SPAM", "SPADE", "prefixSpan")
   
+  spmf.dir <- .jclassPath()[ str_ends(.jclassPath(), "spmf.jar")]
+  
   if(algorithm%in% frequentsequencesAlgorithms){
-  executable <- paste("java -jar /Users/solonioannou/Downloads/spmf.jar run", algorithm, inputFile, outputFile, minsup, showID)
+  executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, showID, sep = " ")
   print(executable)
   system(executable)
   }
@@ -55,6 +75,11 @@ SPMFtoR <- function(algorithm, inputFile, outputFile, minsup, showID = FALSE) {
     print("Algorithm is not supported at the moment!")
   }
 }
+
+inputfile <- "/Users/solonioannou/IdeaProjects/SPMF_Algorithms/src/ca/pfv/spmf/test/contextPrefixSpan.txt"
+outputfile <- "/Users/solonioannou/Temp/SPMFoutput/output_spadefromR.txt"
+support = 0.5
+SPMFtoR(algorithm = "SPADE", inputFile = inputfile, outputFile = outputfile, minsup = support, "false")
 ```
 
 
