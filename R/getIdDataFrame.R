@@ -1,5 +1,10 @@
 getIdDataFrame <- function(inputFile){
   inputfile = read.delim(inputFile, header = FALSE)
+  
+  if (any(stringi::stri_detect_fixed(inputfile$V1, "#SID", max_count = 1)) == FALSE) {
+    stop("The input file provided does not contain sequence IDs")
+  }
+  
   y <- inputfile %>%
     dplyr::mutate(id = stringr::str_replace_all(V1, ".*SID: ", ""), 
                   Seqs = stringr::str_replace_all(V1, ".#.*", "")) %>%
