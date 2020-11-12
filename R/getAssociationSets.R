@@ -21,7 +21,7 @@ getAssociationSets <- function(algorithm, inputFile, outputFile, minsup, showID 
       executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, sep = " ")
     } else {
       if (algorithm == "FP-Growth"){
-        executable <- paste("java -jar", spmf.dir, "run", "FPGrowth", inputFile, outputFile, minsup, sep = " ")
+        executable <- paste("java -jar", spmf.dir, "run", "FPGrowth_itemsets", inputFile, outputFile, minsup, sep = " ")
       } else {
        if (algorithm == "Relim"){
          executable <- paste("java -jar", spmf.dir, "run", "Relim", inputFile, outputFile, minsup, sep = " ")
