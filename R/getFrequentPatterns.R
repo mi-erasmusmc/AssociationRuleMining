@@ -21,7 +21,7 @@ getFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, minLen
       executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, outputID, sep = " ")
     } else {
       if (algorithm == "prefixSpan"){
-        executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, 1000, outputID, sep = " ")
+        executable <- paste("java -jar", spmf.dir, "run", "PrefixSpan", inputFile, outputFile, minsup, 1000, outputID, sep = " ")
       }  
     }
   }

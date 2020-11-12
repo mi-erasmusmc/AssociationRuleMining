@@ -1,0 +1,128 @@
+---
+title: "An example for Frequent Pattern Mining using the Eunomia package"
+date: "11/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DatabaseConnector)
+library(SqlRender)
+library(Eunomia)
+library(FeatureExtraction)
+library(AssociationRuleMining)
+devtools::load_all()
+```
+
+### Connect to the database 
+
+```{r}
+### Define database parameters
+cdmdatabaseschema = "main"
+resultsdatabaseschema = "main"
+fpm_inputFile = "fpm_testing.txt"
+fpm_outputFile = "fpm_testingResults.txt"
+
+connectionDetails <- Eunomia::getEunomiaConnectionDetails()
+connection <- connect(connectionDetails)
+#on.exit(DatabaseConnector::disconnect(connection)) #Close db connection on error or exit
+
+```
+
+### Define cohort
+
+```{r}
+# Define cohort
+cohort <- "SELECT person_id AS subject_id,
+  condition_start_date AS cohort_start_date
+INTO #diagnoses
+FROM @cdm.condition_occurrence
+WHERE condition_concept_id IN (
+    SELECT descendant_concept_id
+    FROM @cdm.concept_ancestor
+    WHERE ancestor_concept_id = 4329847 -- Myocardial infarction
+)
+  AND condition_concept_id NOT IN (
+    SELECT descendant_concept_id
+    FROM @cdm.concept_ancestor
+    WHERE ancestor_concept_id = 314666 -- Old myocardial infarction
+);
+INSERT INTO @cdm.cohort (subject_id, cohort_start_date, cohort_definition_id)
+SELECT subject_id,
+  cohort_start_date,
+  CAST (1 AS INT) AS cohort_definition_id
+FROM #diagnoses
+INNER JOIN @cdm.visit_occurrence
+  ON subject_id = person_id
+    AND cohort_start_date >= visit_start_date
+    AND cohort_start_date <= visit_end_date
+WHERE visit_concept_id IN (9201, 9203, 262); -- Inpatient or ER;"
+
+renderTranslateExecuteSql(connection, cohort, cdm = cdmdatabaseschema)
+
+sql <- "ALTER TABLE #diagnoses ADD cohort_definition_id INT NOT NULL DEFAULT(1)"
+
+# Execute the script to receive the data
+renderTranslateExecuteSql(connection, sql)
+
+querySql(connection, "SELECT count(*) FROM diagnoses;")
+```
+
+### Get the data and close the connection
+
+```{r}
+# Define covariate settings
+TemporalcovariateSettings_eunomia <- createTemporalCovariateSettings(useConditionOccurrence = TRUE,
+                                                      temporalStartDays = seq(-(60*365), -1, by = 1) ,
+                                                      temporalEndDays = seq(-(60*365)+1, 0, by = 1))
+
+# Extract covariates
+TemporalcovariateData_eunomia <- getDbCovariateData(connection = connection, 
+                         cdmDatabaseSchema = cdmdatabaseschema, 
+                         cohortDatabaseSchema = resultsdatabaseschema, 
+                         cohortTable = "diagnoses", 
+                         rowIdField = "subject_id", 
+                         covariateSettings = TemporalcovariateSettings_eunomia, 
+                         cohortTableIsTemp = TRUE)
+
+
+disconnect(connection)
+```
+
+#### Frequent pattern mining ####
+
+## Prepare the data
+```{r}
+getInputFileForFrequentPatterns(covariateDataObject = TemporalcovariateData_eunomia, fileToSave = fpm_inputFile)
+```
+
+## Run SPAM
+
+```{r}
+spam_frequentPatterns <- runFrequentPatterns(algorithm = "SPAM", 
+                                        inputFile = fpm_inputFile, 
+                                        outputFile = fpm_outputFile, 
+                                        minsup = 0.5, 
+                                        showID = TRUE)
+```
+
+## Run SPADE
+
+```{r}
+spade_frequentPatterns <- runFrequentPatterns(algorithm = "SPADE", 
+                                        inputFile = fpm_inputFile, 
+                                        outputFile = fpm_outputFile, 
+                                        minsup = 0.5, 
+                                        showID = TRUE)
+```
+
+## Run prefixSpan
+
+```{r}
+pS_frequentPatterns <- runFrequentPatterns(algorithm = "prefixSpan", 
+                                        inputFile = fpm_inputFile, 
+                                        outputFile = fpm_outputFile, 
+                                        minsup = 0.5,
+                                        showID = TRUE)
+system("java -jar /Library/Frameworks/R.framework/Versions/4.0/Resources/library/AssociationRuleMining/java/spmf.jar run PrefixSpan fpm_testing.txt fpm_testingResults.txt 0.5 1000 true")
+```
