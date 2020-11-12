@@ -1,0 +1,108 @@
+---
+title: "Untitled"
+author: "Solon Ioannou"
+date: "11/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(results = 'hide')
+library(DatabaseConnector)
+library(SqlRender)
+library(Eunomia)
+library(FeatureExtraction)
+library(knitr)
+library(kableExtra)
+library(AssociationRuleMining)
+devtools::load_all()
+```
+
+### Connect to the database 
+
+```{r}
+### Define database parameters
+cdmdatabaseschema = "main"
+resultsdatabaseschema = "main"
+arm_inputFile = "testing.txt"
+arm_outputFile = "testingResults.txt"
+
+connectionDetails <- Eunomia::getEunomiaConnectionDetails()
+connection <- connect(connectionDetails)
+#on.exit(DatabaseConnector::disconnect(connection)) #Close db connection on error or exit
+
+```
+
+#### Define cohort ####
+
+There are two options for defining a cohort:
+- 1) Define the cohort in ATLAS and export the SQL file
+- 2) define it locally within R
+
+```{r}
+cohort <- readSql("data/cohorts/Eunomia_MI_cohort.sql")
+
+renderTranslateExecuteSql(connection, cohort, cdm = "main")
+
+sql <- "ALTER TABLE #diagnoses ADD cohort_definition_id INT NOT NULL DEFAULT(1)"
+
+# Execute the script to receive the data
+renderTranslateExecuteSql(connection, sql)
+
+querySql(connection, "SELECT count(*) FROM diagnoses;")
+```
+
+### Get the data and close the connection
+
+```{r}
+#### Feature Extraction ####
+covariateSettings <- createCovariateSettings(useConditionOccurrenceAnyTimePrior = TRUE, 
+                                             #includedCovariateIds = c(), 
+                                             #includedCovariateConceptIds = c()
+                                             )
+
+
+covariateData_eunomia <- getDbCovariateData(connection = connection, cdmDatabaseSchema = cdmdatabaseschema, cohortDatabaseSchema = resultsDatabaseSchema, cohortTable = "diagnoses", rowIdField = "subject_id", covariateSettings = covariateSettings, cohortTableIsTemp = TRUE)
+
+disconnect(connection)
+```
+
+```{r}
+getInputFileForAssociationRules(covariateDataObject = covariateData_eunomia, fileToSave = arm_inputFile)
+```
+
+## Run Apriori
+
+```{r}
+apriori_associationSets <- runAssociationRules(algorithm = "Apriori", 
+                                       inputFile = arm_inputFile, 
+                                       outputFile = arm_outputFile,
+                                       minsup = 0.5 )
+```
+
+
+## Run Eclat
+
+```{r}
+eclat_associationSets <- runAssociationRules(algorithm = "Eclat", 
+                                       inputFile = arm_inputFile, 
+                                       outputFile = arm_outputFile,
+                                       minsup = 0.5 )
+```
+
+## Run FP-Growth 
+
+```{r}
+fpgrowth_associationSets <- runAssociationRules(algorithm = "FP-Growth", 
+                                       inputFile = arm_inputFile, 
+                                       outputFile = arm_outputFile,
+                                       minsup = 0.5 )
+```
+
+## Run Relim
+
+```{r}
+relim_associationSets <- runAssociationRules(algorithm = "Relim", 
+                                       inputFile = arm_inputFile, 
+                                       outputFile = arm_outputFile,
+                                       minsup = 0.5 )
+```

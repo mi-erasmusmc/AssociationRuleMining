@@ -1,0 +1,107 @@
+---
+title: "Untitled"
+author: "Solon Ioannou"
+date: "11/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DatabaseConnector)
+library(SqlRender)
+library(Eunomia)
+library(FeatureExtraction)
+library(AssociationRuleMining)
+#library(tidyr)
+devtools::load_all()
+```
+
+### Connect to the database 
+
+```{r}
+### Define database parameters
+cdmdatabaseschema = "main"
+resultsdatabaseschema = "main"
+fpm_inputFile = "fpm_testing.txt"
+fpm_outputFile = "fpm_testingResults.txt"
+
+connectionDetails <- Eunomia::getEunomiaConnectionDetails()
+connection <- connect(connectionDetails)
+#on.exit(DatabaseConnector::disconnect(connection)) #Close db connection on error or exit
+
+```
+
+### Define cohort
+
+```{r}
+# Define cohort
+cohort <- readSql("./data/cohorts/Eunomia_MI_cohort.sql")
+
+renderTranslateExecuteSql(connection, cohort, cdm = "main")
+
+sql <- "ALTER TABLE #diagnoses ADD cohort_definition_id INT NOT NULL DEFAULT(1)"
+
+# Execute the script to receive the data
+renderTranslateExecuteSql(connection, sql)
+
+querySql(connection, "SELECT count(*) FROM diagnoses;")
+```
+
+### Get the data and close the connection
+
+```{r}
+# Define covariate settings
+TemporalcovariateSettings_eunomia <- createTemporalCovariateSettings(useConditionOccurrence = TRUE,
+                                                      temporalStartDays = seq(-(60*365), -1, by = 1) ,
+                                                      temporalEndDays = seq(-(60*365)+1, 0, by = 1))
+
+# Extract covariates
+TemporalcovariateData_eunomia <- getDbCovariateData(connection = connection, 
+                         cdmDatabaseSchema = cdmdatabaseschema, 
+                         cohortDatabaseSchema = resultsdatabaseschema, 
+                         cohortTable = "diagnoses", 
+                         rowIdField = "subject_id", 
+                         covariateSettings = TemporalcovariateSettings_eunomia, 
+                         cohortTableIsTemp = TRUE)
+
+
+disconnect(connection)
+```
+
+#### Frequent pattern mining ####
+
+## Prepare the data
+```{r}
+getInputFileForFrequentPatterns(covariateDataObject = TemporalcovariateData_eunomia, fileToSave = fpm_inputFile)
+```
+
+## Run SPAM
+
+```{r}
+spam_frequentPatterns <- runFrequentPatterns(algorithm = "SPAM", 
+                                        inputFile = fpm_inputFile, 
+                                        outputFile = fpm_outputFile, 
+                                        minsup = 0.5, 
+                                        showID = TRUE)
+```
+
+## Run SPADE
+
+```{r}
+spade_frequentPatterns <- runFrequentPatterns(algorithm = "SPADE", 
+                                        inputFile = fpm_inputFile, 
+                                        outputFile = fpm_outputFile, 
+                                        minsup = 0.5, 
+                                        showID = TRUE)
+```
+
+## Run prefixSpan
+
+```{r}
+pS_frequentPatterns <- runFrequentPatterns(algorithm = "prefixSpan", 
+                                        inputFile = fpm_inputFile, 
+                                        outputFile = fpm_outputFile, 
+                                        minsup = 0.5,
+                                        showID = TRUE)
+system("java -jar /Library/Frameworks/R.framework/Versions/4.0/Resources/library/AssociationRuleMining/java/spmf.jar run PrefixSpan fpm_testing.txt fpm_testingResults.txt 0.5 1000 true")
+```
