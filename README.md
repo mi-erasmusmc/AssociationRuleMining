@@ -19,9 +19,9 @@ Requires R (version 3.4.0 and above) and Java.
 
 ## Getting Started  
   
-- Advanced users are encouraged to have a look at [An introduction for the advanced user](), for a quick overview and how to use the package.  
+- Advanced users are encouraged to have a look at [An introduction for the advanced user](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/doc/AdvancedUsers.pdf), for a quick overview and how to use the package.  
   
-- For a complete workflow example using Eunomia, see [An example to extract frequent patterns](https://github.com/mi-erasmusmc/AssociationRuleMining/examples/ExampleWorkflow.pdf).
+- For a complete workflow example using Eunomia, see [An example to extract frequent patterns](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/examples/ExampleWorkflow.pdf).
 
 ## User Documentation
 
