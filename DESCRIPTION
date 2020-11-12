@@ -19,7 +19,8 @@ Imports:
     SqlRender, 
     rJava, 
     tidyr, 
-    stringr
+    stringr, 
+    stringi
 Depends:
     R (>=  3.4.0)
 Suggests: 

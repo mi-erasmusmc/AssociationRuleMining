@@ -3,8 +3,9 @@
 .RData
 .Ruserdata
 .DS_Store
-doc
 Meta
 experimentation
 data/processed
 connections
+errorReportSql.txt
+inst/doc
