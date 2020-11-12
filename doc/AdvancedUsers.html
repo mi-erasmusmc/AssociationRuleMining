@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>An introduction to the AssociationRuleMining package for advanced users.</title>
+
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">An introduction to the AssociationRuleMining package for advanced users.</h1>
+
+
+
+<div id="overview" class="section level1">
+<h1>Overview</h1>
+<p>To quickly summarise how to implement the AssociationRuleMining package:</p>
+<ol style="list-style-type: decimal">
+<li>The package implements two analysis frameworks, association rule and frequent pattern mining.</li>
+</ol>
+<p>Assuming the user has instantiated an appropriate and relevant cohort, and extracted the relevant information using <code>FeatureExtraction</code>.</p>
+<ol start="2" style="list-style-type: decimal">
+<li>Each analysis framework of the package, has its own set of functions.</li>
+</ol>
+<ul>
+<li><p>Association rule mining can be implemented using just two functions: <code>getInputFileForAssociationRules()</code> and <code>runAssociationRules()</code>.</p></li>
+<li><p>Frequent pattern mining can be implemented using just two functions: <code>getInputFileForFrequentPatterns()</code> and <code>runFrequentPatterns()</code>. Additionally, the <code>getIdDataFrame()</code> provides a data frame object that indicates the presence or not of a sequence.</p></li>
+</ul>
+<p><strong>Notes:</strong><br />
+- Input files should be .txt files.<br />
+- None of the functions are exported at the moment. Make sure to use <code>devtools:load_all()</code> after loading the package.<br />
+- For quick examples have a look at the <a href="#preparing-the-data-for-mining">Preparing the data for mining</a> and <a href="#mining">Mining</a> sections below.</p>
+</div>
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>This vignette is designed in a way that briefly introduces the advanced user to the AssociationRuleMining R package. By advanced user, we refer to someone already familiar to the OHDSI framework as a start. The package is designed to provide a pipeline for Association Rule Mining (ARM) and Frequent Pattern Mining (FPM) against the OMOP-CDM, even though with an acceptable data input format it can be used to generate results for any general problem or use case.</p>
+<p>The package makes use of the open source SPMF library, developed and maintained by Philippe Fournier-Viger. SPMF is a Data Mining Java library implementing a large collection of algorithms related to ARM and FPM, as well as, clustering algorithms and time series mining. The reader is encouraged to have a look at the <a href="http://www.philippe-fournier-viger.com/spmf/">website of SPMF</a> and explore the documentation and the vast list of implementations offered by the library.</p>
+<p>Finally, we would like to encourage the user to experiment with the package and provide feedback, either through the <a href="https://github.com/mi-erasmusmc/AssociationRuleMining/issues">GitHub issue tracker</a> or by email. Have in mind that the package is in the development phase and some features may break. Also, documentation about the conceptual frameworks of ARM and FPM, as well as, documentation related to the algorithms are in production. Interested users may want to have a regular look at the <a href="https://github.com/mi-erasmusmc/AssociationRuleMining">github</a> site of the package for updates. Happy mining!</p>
+</div>
+<div id="implementation" class="section level1">
+<h1>Implementation</h1>
+<div id="data-preparation" class="section level2">
+<h2>Data Preparation</h2>
+<div id="getting-the-necessary-data-out-of-the-cdm" class="section level3">
+<h3>Getting the necessary data out of the CDM</h3>
+<p>We assume that an appropriate cohort has been generated for which we would like to extract relevant covariates (e.g. first instance of Myocardial Infarction) and is living on an SQL table. The cohort needs to have the three least usual columns of subject_id, cohort_start_date, and cohort_definition_id. The FeatureExtraction package can then be used to generate temporal covariates of interest for the cohort. For detailed instructions of how to do that have a look at the FeatureExtraction package.</p>
+<p>A simple pipeline for generating covariates to be used for ARM is the following:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="co">#### Feature Extraction ####</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a>covariateSettings &lt;-<span class="st"> </span><span class="kw">createCovariateSettings</span>(<span class="dt">useConditionOccurrenceAnyTimePrior =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb1-3"><a href="#cb1-3"></a></span>
+<span id="cb1-4"><a href="#cb1-4"></a>covariateData &lt;-<span class="st"> </span><span class="kw">getDbCovariateData</span>(<span class="dt">connection =</span> connection, </span>
+<span id="cb1-5"><a href="#cb1-5"></a>                                    <span class="dt">cdmDatabaseSchema =</span> cdmdatabaseschema, <span class="co">#The database schema where the cdm lives</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a>                                    <span class="dt">cohortDatabaseSchema =</span> resultsDatabaseSchema, <span class="co">#The database schema where the cohort table lives</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a>                                    <span class="dt">cohortTable =</span> <span class="st">&quot;diagnoses&quot;</span>, <span class="co">#Name of the cohort table</span></span>
+<span id="cb1-8"><a href="#cb1-8"></a>                                    <span class="dt">rowIdField =</span> <span class="st">&quot;subject_id&quot;</span>, </span>
+<span id="cb1-9"><a href="#cb1-9"></a>                                    <span class="dt">covariateSettings =</span> covariateSettings, </span>
+<span id="cb1-10"><a href="#cb1-10"></a>                                    <span class="dt">cohortTableIsTemp =</span> <span class="ot">TRUE</span>) <span class="co">#If the cohort table is temporary or not</span></span></code></pre></div>
+<p>A simple pipeline for generating temporal covariates to be used for FPM is the following:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a>TemporalcovariateSettings &lt;-<span class="st"> </span><span class="kw">createTemporalCovariateSettings</span>(<span class="dt">useConditionOccurrence =</span> <span class="ot">TRUE</span>,</span>
+<span id="cb2-2"><a href="#cb2-2"></a>                                                      <span class="dt">temporalStartDays =</span> <span class="kw">seq</span>(<span class="op">-</span>(<span class="dv">60</span><span class="op">*</span><span class="dv">365</span>), <span class="dv">-1</span>, <span class="dt">by =</span> <span class="dv">1</span>) ,</span>
+<span id="cb2-3"><a href="#cb2-3"></a>                                                      <span class="dt">temporalEndDays =</span> <span class="kw">seq</span>(<span class="op">-</span>(<span class="dv">60</span><span class="op">*</span><span class="dv">365</span>)<span class="op">+</span><span class="dv">1</span>, <span class="dv">0</span>, <span class="dt">by =</span> <span class="dv">1</span>))</span>
+<span id="cb2-4"><a href="#cb2-4"></a></span>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="co"># Extract covariates</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a>TemporalcovariateData&lt;-<span class="st"> </span><span class="kw">getDbCovariateData</span>(<span class="dt">connection =</span> connection, </span>
+<span id="cb2-7"><a href="#cb2-7"></a>                                           <span class="dt">cdmDatabaseSchema =</span> cdmdatabaseschema, <span class="co">#The database schema where the cdm lives</span></span>
+<span id="cb2-8"><a href="#cb2-8"></a>                                           <span class="dt">cohortDatabaseSchema =</span> resultsdatabaseschema, <span class="co">#The database schema where the cohort table lives</span></span>
+<span id="cb2-9"><a href="#cb2-9"></a>                                           <span class="dt">cohortTable =</span> cohorttable, <span class="co">#Name of the cohort table</span></span>
+<span id="cb2-10"><a href="#cb2-10"></a>                                           <span class="dt">rowIdField =</span> <span class="st">&quot;subject_id&quot;</span>, </span>
+<span id="cb2-11"><a href="#cb2-11"></a>                                           <span class="dt">covariateSettings =</span> TemporalcovariateSettings, </span>
+<span id="cb2-12"><a href="#cb2-12"></a>                                           <span class="dt">cohortTableIsTemp =</span> <span class="ot">TRUE</span>) <span class="co">#If the cohort table is temporary or not</span></span></code></pre></div>
+</div>
+<div id="preparing-the-data-for-mining" class="section level3">
+<h3>Preparing the data for mining</h3>
+<p>To generate the appropriate input file for ARM, one should make use of the function <code>getInputFileForAssociationRules()</code>. The analogous function for FPM is <code>getInputFileForFrequentPatterns()</code>. These functions generate the necessary input files that fulfill the adequate input structure for the algorithms to be implemented. A word of caveat is that the input format has to be a .txt file. Have a look at the SPMF documentation for more details and acceptable alternatives. However, AssociationRuleMining only supports .txt files as inputs at the moment. As these functions generate a text file that is to be processed by the algorithms, they do not need to be assigned to an R object.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">getInputFileForAssociationRules</span>(<span class="dt">covariateDataObject =</span> covariateData, <span class="dt">fileToSave =</span> <span class="st">&quot;AssociationRulesExample.txt&quot;</span>)</span></code></pre></div>
+<p>Note that the <code>covariateDataObject</code> argument takes the covariate data object generated by <code>FeatureExtarction</code>. The <code>fileToSave</code> argument takes the path of the file where the input data is going to be stored and should end in ‘.txt’.</p>
+<p>Similarly for FPM, the same notes as above hold.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">getInputFileForFrequentPatterns</span>(<span class="dt">covariateDataObject =</span> TemporalcovariateData, <span class="dt">fileToSave =</span> <span class="st">&quot;FrequentPatternsExample.txt&quot;</span>)</span></code></pre></div>
+</div>
+<div id="mining" class="section level3">
+<h3>Mining</h3>
+<p>We would like to emphasize that there is no documentation yet that describes the arguments that are accepted as inputs to the functions calls. We try to describe them in some detail here.</p>
+<div id="association-rule-mining" class="section level4">
+<h4>Association Rule Mining</h4>
+<p>To run an analysis of ARM, one needs to call <code>runAssociationRules()</code>. The function requires four arguments to be specified:</p>
+<ul>
+<li><code>algorithm</code>: Which algorithm to run, currently only accepting one of “Apriori”, “Eclat”, “FP-Growth”, “Relim” and should be quoted.<br />
+</li>
+<li><code>inputFile</code>: Location and name of the file generated by <code>getInputFileForAssociationRules()</code>.<br />
+</li>
+<li><code>outputFile</code>: Location and name of the file where the results should be saved. <strong>Should be a .txt file</strong>.<br />
+</li>
+<li><code>minSup</code>: Minimum support for mined items.</li>
+</ul>
+<p>Other arguments are possible to be specified, such as, maxLength, indicating the maximum number of items mined in an itemset. However, this is not applicable to every algorithm and it is not implemented at the moment in this package.</p>
+<p>An example can be the following:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a>associationSets &lt;-<span class="st"> </span><span class="kw">runAssociationRules</span>(<span class="dt">algorithm =</span> <span class="st">&quot;Apriori&quot;</span>, </span>
+<span id="cb5-2"><a href="#cb5-2"></a>                                       <span class="dt">inputFile =</span> <span class="st">&quot;AssociationRulesExample.txt&quot;</span>, </span>
+<span id="cb5-3"><a href="#cb5-3"></a>                                       <span class="dt">outputFile =</span> <span class="st">&quot;AssociationRulesExample_Results.txt&quot;</span>,</span>
+<span id="cb5-4"><a href="#cb5-4"></a>                                       <span class="dt">minsup =</span> <span class="fl">0.5</span> )</span></code></pre></div>
+<p>The function generates another text file saved as “AssociationRulesExample_Results.txt” in the current working directory. It prints on the screen the number of mined itemsets, the time required, memory used and the location of where the output is stored. It also, transforms the output to an R object and therefore needs to be saved.</p>
+</div>
+</div>
+<div id="frequent-pattern-mining" class="section level3">
+<h3>Frequent Pattern Mining</h3>
+<p>Similarly for FPM, one needs to call <code>runFrequentPatterns()</code>. The function requires 4 mandatory arguments to be specified, and other arguments related to each algorithm.</p>
+<ul>
+<li><code>algorithm</code>: Which algorithm to run, currently only supporting one of “SPAM”, “SPADE”, “prefixSpan” and should be quoted.<br />
+</li>
+<li><code>inputFile</code>: Location and name of the file generated by <code>getInputFileForFrequentPatterns()</code>.<br />
+</li>
+<li><code>outputFile</code>: Location and name of the file where the results should be saved. <strong>Should be a .txt file</strong>.<br />
+</li>
+<li><code>minsup</code>: Mininum support for mined sequences.</li>
+</ul>
+<p>Additionally, some of the algorithms accept several additional arguments:</p>
+<ul>
+<li><code>minLength</code>: The minimum length required for a sequence, defaults to 1.<br />
+</li>
+<li><code>maxLength</code>: The maximum length allowed for a sequence, defaults to 1000.<br />
+</li>
+<li><code>maxGap</code>: The maximum gap between two events to be considered in a sequence, defaults to 1000.<br />
+</li>
+<li><code>showID</code>: If sequence ID should be generated, defaults to FALSE.</li>
+</ul>
+<p>An example can be the following:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a>frequentPatterns &lt;-<span class="st"> </span><span class="kw">runFrequentPatterns</span>(<span class="dt">algorithm =</span> <span class="st">&quot;SPADE&quot;</span>, </span>
+<span id="cb6-2"><a href="#cb6-2"></a>                                        <span class="dt">inputFile =</span> <span class="st">&quot;FrequentPatternsExample.txt&quot;</span>, </span>
+<span id="cb6-3"><a href="#cb6-3"></a>                                        <span class="dt">outputFile =</span> <span class="st">&quot;FrequentPatternsExample_Results.txt&quot;</span>, </span>
+<span id="cb6-4"><a href="#cb6-4"></a>                                        <span class="dt">minsup =</span> <span class="fl">0.5</span>, </span>
+<span id="cb6-5"><a href="#cb6-5"></a>                                        <span class="dt">showID =</span> <span class="ot">TRUE</span>)</span></code></pre></div>
+<p>The function generates another text file saved as “FrequentPatternsExample_Results.txt” in the current working directory. It prints on the screen the number of mined sequences, the time required, memory used and the location of where the output is stored. It also, transforms the output to an R object and therefore needs to be saved.</p>
+<p>Additionally for FPM, <code>getIdDataFrame()</code> generates a data frame object, indicating the presence or not of sequence for each patient id. It is only applicable when <code>showID = TRUE</code> when running <code>runFrequentPatterns()</code> and accepts as input the output <strong>.txt</strong> file of the previous call.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">getIdDataFrame</span>(<span class="dt">inputFile =</span> <span class="st">&quot;FrequentPatternsExample_Results.txt&quot;</span>)</span></code></pre></div>
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
