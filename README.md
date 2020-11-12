@@ -20,8 +20,13 @@ Requires R (version 3.4.0 and above) and Java.
 ## Getting Started  
   
 - Advanced users are encouraged to have a look at [An introduction for the advanced user](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/doc/AdvancedUsers.pdf), for a quick overview and how to use the package.  
+
+- In the directory [/extras](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/extras) there are available .R and .Rmd files ready to be executed against any OMOP-CDM database, once the necessary fields are filled in. 
   
-- For a complete workflow example using Eunomia, see [An example to extract frequent patterns](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/examples/ExampleWorkflow.pdf).
+For examples of the complete workflow using the Eunomia package, have a look at   
+  
+- [An example to extract association rules](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/examples/AR_example_workflow_Eunomia.Rmd)  
+- [An example to extract frequent patterns](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/examples/FP_example_workflow_Eunomia.Rmd).  
 
 ## User Documentation
 
