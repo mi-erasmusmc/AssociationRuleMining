@@ -25,4 +25,6 @@ getInputFileForFrequentPatterns <- function(covariateDataObject, fileToSave) {
   
   message("Generating input file for frequent pattern mining...")
   getInputDataForFrequentPatterns(data = NamesData, filename = fileToSave)
+  
+  return(NamesData)
 }
