@@ -1,0 +1,170 @@
+---
+title: "A test to check the additive on prediction using Frequent Patterns as covariates"
+author: "Solon Ioannou"
+date: "11/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(SqlRender)
+library(DatabaseConnector)
+library(FeatureExtraction)
+library(PatientLevelPrediction)
+library(AssociationRuleMining)
+devtools::load_all()
+```
+
+```{r}
+# Setting up connection parameters
+connectionDetails <- createConnectionDetails(dbms = "postgresql", 
+                                             server = "localhost/ohdsi", 
+                                             user = "joe", 
+                                             password = "supersecret")
+
+cdmDatabaseSchema <- "my_cdm_data"
+cohortsDatabaseSchema <- "my_results"
+cdmVersion <- "5"
+```
+
+```{r}
+sql <- readSql("data/cohorts/PlpAfStrokeCohorts.sql")
+sql <- renderSql(sql,
+                 cdmDatabaseSchema = cdmDatabaseSchema,
+                 cohortsDatabaseSchema = cohortsDatabaseSchema,
+                 post_time = 30,
+                 pre_time = 365)$sql
+
+sql <- translateSql(sql, targetDialect = connectionDetails$dbms)$sql
+
+connection <- connect(connectionDetails)
+executeSql(connection, sql)
+```
+
+```{r}
+# Checking if everything went well and how many events we have
+sql <- paste("SELECT cohort_definition_id, COUNT(*) AS count",
+             "FROM @cohortsDatabaseSchema.AFibStrokeCohort",
+             "GROUP BY cohort_definition_id")
+
+sql <- renderSql(sql, cohortsDatabaseSchema = cohortsDatabaseSchema)$sql
+
+sql <- translateSql(sql, targetDialect = connectionDetails$dbms)$sql
+
+querySql(connection, sql)
+```
+
+# Specifying covariate settings with no temporal information
+
+```{r}
+covariateSettings <- createCovariateSettings(useDemographicsGender = TRUE,
+                                             useDemographicsAge = TRUE,
+                                             useConditionGroupEraLongTerm = TRUE,
+                                             useConditionGroupEraAnyTimePrior = TRUE,
+                                             useDrugGroupEraLongTerm = TRUE,
+                                             useDrugGroupEraAnyTimePrior = TRUE,
+                                             useVisitConceptCountLongTerm = TRUE,
+                                             longTermStartDays = -365,
+                                             endDays = -1)
+
+```
+
+#### Specifying covariate setting for frequent patterns
+
+```{r}
+temporalCovariateSettings <- createTemporalCovariateSettings(useConditionOccurrence = TRUE,
+                                                             temporalStartDays = seq(-(99*365), -1, by = 2),
+                                                             temporalEndDays = seq(-(99*365)+1, 0, by = 2))
+
+fpCovariateSettings <- createFrequentPatternsCovariateSettings(useFrequentPatterns = TRUE, 
+                                                               algorithm = "SPADE", 
+                                                               inputFile = "Af_inputData_forFp.txt", 
+                                                               outputFile = "Af_inputData_forFp_results.txt", 
+                                                               minsup = 0.5, 
+                                                               showID = TRUE, 
+                                                               temporalCovariateSettings = temporalCovariateSettings 
+                                                              )
+
+```
+
+```{r}
+covariateSettingsList <- list(covariateSettings, fpCovariateSettings)
+```
+
+#### Creating covariates with no temporal information
+
+```{r}
+atempPlpData <- getPlpData(connectionDetails = connectionDetails,
+                      cdmDatabaseSchema = cdmDatabaseSchema,
+                      cohortDatabaseSchema = resultsDatabaseSchema,
+                      cohortTable = 'AFibStrokeCohort',
+                      cohortId = 1,
+                      covariateSettings = covariateSettings,
+                      outcomeDatabaseSchema = resultsDatabaseSchema,
+                      outcomeTable = 'AFibStrokeCohort',
+                      outcomeIds = 2,
+                      sampleSize = 10000
+                      )
+
+savePlpData(plpData, "stroke_in_af_data")
+```
+
+#### Creating covariates with frequent patterns
+
+```{r}
+fpPlpData <- getPlpData(connectionDetails = connectionDetails,
+                        cdmDatabaseSchema = cdmDatabaseSchema,
+                        cohortDatabaseSchema = resultsDatabaseSchema,
+                        cohortTable = 'AFibStrokeCohort',
+                        cohortId = 1,
+                        covariateSettings = covariateSettings,
+                        outcomeDatabaseSchema = resultsDatabaseSchema,
+                        outcomeTable = 'AFibStrokeCohort',
+                        outcomeIds = 2,
+                        sampleSize = 10000
+                        )
+```
+
+
+```{r}
+population <- createStudyPopulation(plpData = plpData,
+                                    outcomeId = 2,
+                                    washoutPeriod = 1095,
+                                    firstExposureOnly = FALSE,
+                                    removeSubjectsWithPriorOutcome = FALSE,
+                                    priorOutcomeLookback = 1,
+                                    riskWindowStart = 1,
+                                    riskWindowEnd = 365,
+                                    addExposureDaysToStart = FALSE,
+                                    addExposureDaysToEnd = FALSE,
+                                    minTimeAtRisk = 364,
+                                    requireTimeAtRisk = TRUE,
+                                    includeAllOutcomes = TRUE,
+                                    verbosity = "DEBUG"
+                                    )
+```
+
+```{r}
+lassoModel <- setLassoLogisticRegression()
+```
+
+```{r}
+atempResults <- runPlp(population, 
+                       atempPlpData, 
+                       modelSettings = lrModel, 
+                       testSplit='stratified', 
+                       testFraction=0.25, 
+                       nfold=2, 
+                       splitSeed = 1234)
+```
+
+```{r}
+fpResults <- runPlp(population, 
+                    fpPlpData, 
+                    modelSettings = lrModel, 
+                    testSplit='stratified', 
+                    testFraction=0.25, 
+                    nfold=2, 
+                    splitSeed = 1234)
+```
+
