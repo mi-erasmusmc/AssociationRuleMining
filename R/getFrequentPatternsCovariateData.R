@@ -9,7 +9,7 @@ getFrequentPatternsCovariateData <- function(connection,
                                              temporalCovariateSettings,
                                              cohortTableIsTemp = FALSE,
                                              aggregated = FALSE) {
-  writeLines("Constructing length of observation covariates")
+  writeLines("Constructing frequent patterns covariates")
   if (covariateSettings$useFrequentPatterns == FALSE) {
     return(NULL)
   }
@@ -44,6 +44,7 @@ getFrequentPatternsCovariateData <- function(connection,
   # Converting to FeatureExtraction object 
   fpData <- toCovariateData(inputFile = covariateSettings$outputFile, objectWithIds = input)
   
+  assign("frequentPatternsData", frequentPatterns, envir = .GlobalEnv)
   return(fpData)
 }
 
