@@ -28,7 +28,7 @@ cdmVersion <- "5"
 ```
 
 ```{r}
-sql <- readSql("data/cohorts/PlpAfStrokeCohorts.sql")
+sql <- readSql("../data/cohorts/PlpAfStrokeCohorts.sql")
 sql <- renderSql(sql,
                  cdmDatabaseSchema = cdmDatabaseSchema,
                  cohortsDatabaseSchema = cohortsDatabaseSchema,
@@ -69,7 +69,7 @@ covariateSettings <- createCovariateSettings(useDemographicsGender = TRUE,
 
 ```
 
-#### Specifying covariate setting for frequent patterns
+#### Specifying covariate settings for frequent patterns
 
 ```{r}
 temporalCovariateSettings <- createTemporalCovariateSettings(useConditionOccurrence = TRUE,
@@ -106,7 +106,7 @@ atempPlpData <- getPlpData(connectionDetails = connectionDetails,
                       sampleSize = 10000
                       )
 
-savePlpData(plpData, "stroke_in_af_data")
+savePlpData(atempplpData, "stroke_in_af_data")
 ```
 
 #### Creating covariates with frequent patterns
@@ -117,12 +117,13 @@ fpPlpData <- getPlpData(connectionDetails = connectionDetails,
                         cohortDatabaseSchema = resultsDatabaseSchema,
                         cohortTable = 'AFibStrokeCohort',
                         cohortId = 1,
-                        covariateSettings = covariateSettings,
+                        covariateSettings = covariateSettingsList,
                         outcomeDatabaseSchema = resultsDatabaseSchema,
                         outcomeTable = 'AFibStrokeCohort',
                         outcomeIds = 2,
                         sampleSize = 10000
                         )
+savePlpData(fpPlpData, "stroke_in_af_data_with_fps")
 ```
 
 
