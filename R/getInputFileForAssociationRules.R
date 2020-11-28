@@ -8,13 +8,13 @@ getInputFileForAssociationRules <- function(covariateDataObject, fileToSave){
     stop("Filename should be a .txt file")
   }
   
-  if(file.exists(fileToSave)){
-    warning("File already exists!")
-    overwrite <- menu(c("Yes", "No"), title="Should it be overwritten?")  
-    if (overwrite==2){
-      stop("Operation interrupted by user. Declare a different file name or location.") 
-    }
-  }
+  #if(file.exists(fileToSave)){
+  #  warning("File already exists!")
+  #  overwrite <- menu(c("Yes", "No"), title="Should it be overwritten?")  
+  #  if (overwrite==2){
+  #    stop("Operation interrupted by user. Declare a different file name or location.") 
+  #  }
+  #}
   
   data <- as.data.frame(covariateDataObject$covariates)
   
