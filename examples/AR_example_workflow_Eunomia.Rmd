@@ -97,6 +97,7 @@ apriori_associationSets <- runAssociationRules(algorithm = "Apriori",
                                        inputFile = arm_inputFile, 
                                        outputFile = arm_outputFile,
                                        minsup = 0.5 )
+head(apriori_associationSets)
 ```
 
 
@@ -107,6 +108,7 @@ eclat_associationSets <- runAssociationRules(algorithm = "Eclat",
                                        inputFile = arm_inputFile, 
                                        outputFile = arm_outputFile,
                                        minsup = 0.5 )
+head(eclat_associationSets)
 ```
 
 ## Run FP-Growth 
@@ -116,6 +118,7 @@ fpgrowth_associationSets <- runAssociationRules(algorithm = "FP-Growth",
                                        inputFile = arm_inputFile, 
                                        outputFile = arm_outputFile,
                                        minsup = 0.5 )
+head(fpgrowth_associationSets)
 ```
 
 ## Run Relim
@@ -125,4 +128,5 @@ relim_associationSets <- runAssociationRules(algorithm = "Relim",
                                        inputFile = arm_inputFile, 
                                        outputFile = arm_outputFile,
                                        minsup = 0.5 )
+head(relim_associationSets)
 ```
