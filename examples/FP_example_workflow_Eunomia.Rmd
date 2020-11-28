@@ -102,7 +102,7 @@ disconnect(connection)
 
 ## Prepare the data
 ```{r}
-test <- getInputFileForFrequentPatterns(covariateDataObject = TemporalcovariateData_eunomia, fileToSave = fpm_inputFile)
+testData <- getInputFileForFrequentPatterns(covariateDataObject = TemporalcovariateData_eunomia, fileToSave = fpm_inputFile)
 ```
 
 ## Run SPAM
