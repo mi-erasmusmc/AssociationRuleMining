@@ -1,0 +1,158 @@
+---
+title: "Another test to check the additive on prediction using Frequent Patterns as covariates"
+author: "Solon Ioannou"
+date: "11/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(SqlRender)
+library(DatabaseConnector)
+library(FeatureExtraction)
+library(PatientLevelPrediction)
+library(AssociationRuleMining)
+devtools::load_all()
+```
+
+```{r}
+# Setting up connection parameters
+connectionDetails <- createConnectionDetails(dbms = "postgresql", 
+                                             server = "localhost/ohdsi", 
+                                             user = "joe", 
+                                             password = "supersecret")
+
+cdmDatabaseSchema <- "my_cdm_data"
+cohortsDatabaseSchema <- "my_results"
+cdmVersion <- "5"
+```
+
+```{r}
+sql <- readSql("../data/cohorts/PlpAceAngioCohorts.sql")
+sql <- render(sql,
+cdmDatabaseSchema = cdmDatabaseSchema,
+cohortsDatabaseSchema = cohortsDatabaseSchema)
+sql <- translate(sql, targetDialect = connectionDetails$dbms)
+connection <- connect(connectionDetails)
+executeSql(connection, sql)
+```
+
+```{r}
+sql <- paste("SELECT cohort_definition_id, COUNT(*) AS count",
+"FROM @cohortsDatabaseSchema.AceAngioCohort",
+"GROUP BY cohort_definition_id")
+sql <- render(sql, cohortsDatabaseSchema = cohortsDatabaseSchema)
+sql <- translate(sql, targetDialect = connectionDetails$dbms)
+querySql(connection, sql)
+```
+
+# Specifying covariate settings with no temporal information
+
+```{r}
+covariateSettings <- createCovariateSettings(useDemographicsGender = TRUE,
+useDemographicsAge = TRUE,
+useConditionGroupEraLongTerm = TRUE,
+useConditionGroupEraAnyTimePrior = TRUE,
+useDrugGroupEraLongTerm = TRUE,
+useDrugGroupEraAnyTimePrior = TRUE,
+useVisitConceptCountLongTerm = TRUE,
+longTermStartDays = -365,
+endDays = -1)
+```
+
+#### Specifying covariate settings for frequent patterns
+
+```{r}
+temporalCovariateSettings <- createTemporalCovariateSettings(useConditionOccurrence = TRUE,
+                                                             temporalStartDays = seq(-(99*365), -1, by = 2),
+                                                             temporalEndDays = seq(-(99*365)+1, 0, by = 2))
+
+fpCovariateSettings <- createFrequentPatternsCovariateSettings(useFrequentPatterns = TRUE, 
+                                                               algorithm = "SPADE", 
+                                                               inputFile = "Ace_inputData_forFp.txt", 
+                                                               outputFile = "Ace_inputData_forFp_results.txt", 
+                                                               minsup = 0.5, 
+                                                               showID = TRUE, 
+                                                               temporalCovariateSettings = temporalCovariateSettings 
+                                                              )
+
+```
+
+```{r}
+covariateSettingsList <- list(covariateSettings, fpCovariateSettings)
+```
+
+```{r}
+atemp_plpData <- getPlpData(connectionDetails = connectionDetails,
+                            cdmDatabaseSchema = cdmDatabaseSchema,
+                            cohortDatabaseSchema = resultsDatabaseSchema,
+                            cohortTable = 'AceAngioCohort',
+                            cohortId = 1,
+                            covariateSettings = covariateSettings,
+                            outcomeDatabaseSchema = resultsDatabaseSchema,
+                            outcomeTable = 'AceAngioCohort',
+                            outcomeIds = 2,
+                            sampleSize = 10000
+                            )
+
+savePlpData(atemp_plpData, "angio_in_ace_data")
+```
+
+```{r}
+fp_plpData <- getPlpData(connectionDetails = connectionDetails,
+                            cdmDatabaseSchema = cdmDatabaseSchema,
+                            cohortDatabaseSchema = resultsDatabaseSchema,
+                            cohortTable = 'AceAngioCohort',
+                            cohortId = 1,
+                            covariateSettings = covariateSettingsList,
+                            outcomeDatabaseSchema = resultsDatabaseSchema,
+                            outcomeTable = 'AceAngioCohort',
+                            outcomeIds = 2,
+                            sampleSize = 10000
+                            )
+
+savePlpData(fp_PlpData, "angio_in_ace_data_with_fps")
+```
+
+```{r}
+population <- createStudyPopulation(plpData = plpData,
+                                    outcomeId = 2,
+                                    washoutPeriod = 364,
+                                    firstExposureOnly = FALSE,
+                                    removeSubjectsWithPriorOutcome = TRUE,
+                                    priorOutcomeLookback = 9999,
+                                    riskWindowStart = 1,
+                                    riskWindowEnd = 365,
+                                    addExposureDaysToStart = FALSE,
+                                    addExposureDaysToEnd = FALSE,
+                                    minTimeAtRisk = 364,
+                                    requireTimeAtRisk = TRUE,
+                                    includeAllOutcomes = TRUE,
+                                    verbosity = "DEBUG")
+```
+
+```{r}
+gbmModel <- setGradientBoostingMachine(ntrees = 5000, maxDepth = c(4, 7, 10), learnRate = c(0.001,
+0.01, 0.1, 0.9))
+```
+
+```{r}
+atemp_gbmResults <- runPlp(population, 
+                          atemp_plpData, 
+                          modelSettings = gbmModel, 
+                          testSplit='stratified',
+                          testFraction=0.25, 
+                          nfold=2, 
+                          splitSeed = 1234)
+```
+
+```{r}
+fp_gbmResults <- runPlp(population, 
+                          fp_plpData, 
+                          modelSettings = gbmModel, 
+                          testSplit='stratified',
+                          testFraction=0.25, 
+                          nfold=2, 
+                          splitSeed = 1234)
+```
+

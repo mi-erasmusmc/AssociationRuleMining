@@ -21,7 +21,16 @@ devtools::load_all()
 cdmdatabaseschema = "main"
 resultsdatabaseschema = "main"
 fpm_inputFile = "fpm_testing.txt"
-fpm_outputFile = "fpm_testingResults.txt"
+fpm_outputFile_SPAM = "fpm_testingResults_SPAM.txt"
+fpm_outputFile_SPADE = "fpm_testingResults_SPADE.txt"
+fpm_outputFile_prefixSpan = "fpm_testingResults_prefixSpan.txt"
+fpm_outputFile_Clasp = "fpm_testingResults_Clasp.txt"
+fpm_outputFile_CMClasp = "fpm_testingResults_CMClasp.txt"
+fpm_outputFile_MaxSP = "fpm_testingResults_MaxSP.txt"
+fpm_outputFile_VMSP = "fpm_testingResults_VMSP.txt"
+fpm_outputFile_VGEN = "fpm_testingResults_VGEN.txt"
+fpm_outputFile_RuleGrowth = "fpm_testingResults_RuleGrowth.txt"
+fpm_outputFile_ERMiner =  "fpm_testingResults_ERMiner.txt"
 
 connectionDetails <- Eunomia::getEunomiaConnectionDetails()
 connection <- connect(connectionDetails)
@@ -93,7 +102,7 @@ disconnect(connection)
 
 ## Prepare the data
 ```{r}
-getInputFileForFrequentPatterns(covariateDataObject = TemporalcovariateData_eunomia, fileToSave = fpm_inputFile)
+testData <- getInputFileForFrequentPatterns(covariateDataObject = TemporalcovariateData_eunomia, fileToSave = fpm_inputFile)
 ```
 
 ## Run SPAM
@@ -101,9 +110,10 @@ getInputFileForFrequentPatterns(covariateDataObject = TemporalcovariateData_euno
 ```{r}
 spam_frequentPatterns <- runFrequentPatterns(algorithm = "SPAM", 
                                         inputFile = fpm_inputFile, 
-                                        outputFile = fpm_outputFile, 
+                                        outputFile = fpm_outputFile_SPAM, 
                                         minsup = 0.5, 
                                         showID = TRUE)
+head(spam_frequentPatterns)
 ```
 
 ## Run SPADE
@@ -111,9 +121,11 @@ spam_frequentPatterns <- runFrequentPatterns(algorithm = "SPAM",
 ```{r}
 spade_frequentPatterns <- runFrequentPatterns(algorithm = "SPADE", 
                                         inputFile = fpm_inputFile, 
-                                        outputFile = fpm_outputFile, 
+                                        outputFile = fpm_outputFile_SPADE, 
                                         minsup = 0.5, 
                                         showID = TRUE)
+
+head(spade_frequentPatterns)
 ```
 
 ## Run prefixSpan
@@ -121,8 +133,84 @@ spade_frequentPatterns <- runFrequentPatterns(algorithm = "SPADE",
 ```{r}
 pS_frequentPatterns <- runFrequentPatterns(algorithm = "prefixSpan", 
                                         inputFile = fpm_inputFile, 
-                                        outputFile = fpm_outputFile, 
+                                        outputFile = fpm_outputFile_prefixSpan, 
                                         minsup = 0.5,
                                         showID = TRUE)
-system("java -jar /Library/Frameworks/R.framework/Versions/4.0/Resources/library/AssociationRuleMining/java/spmf.jar run PrefixSpan fpm_testing.txt fpm_testingResults.txt 0.5 1000 true")
+
+head(pS_frequentPatterns)
+```
+## Run Clasp
+
+```{r}
+clasp_frequentPatterns <- runFrequentPatterns(algorithm = "Clasp", 
+                                              inputFile = fpm_inputFile, 
+                                              outputFile = fpm_outputFile_Clasp, 
+                                              minsup = 0.50, 
+                                              showID = TRUE )
+
+head(clasp_frequentPatterns)
+```
+
+## Run CM-Clasp
+
+```{r}
+cmclasp_frequentPatterns <- runFrequentPatterns(algorithm = "CM-Clasp", 
+                                              inputFile = fpm_inputFile, 
+                                              outputFile = fpm_outputFile_CMClasp, 
+                                              minsup = 0.50, 
+                                              showID = TRUE )
+
+head(cmclasp_frequentPatterns)
+```
+
+## Run VMSP
+
+```{r}
+vmsp_frequentPatterns <- runFrequentPatterns(algorithm = "VMSP", 
+                                              inputFile = fpm_inputFile, 
+                                              outputFile = fpm_outputFile_VMSP, 
+                                              minsup = 0.50, 
+                                              showID = TRUE )
+
+head(vmsp_frequentPatterns)
+```
+
+## Run VGEN
+
+```{r}
+vgen_frequentPatterns <- runFrequentPatterns(algorithm = "VGEN", 
+                                              inputFile = fpm_inputFile, 
+                                              outputFile = fpm_outputFile_VGEN, 
+                                              minsup = 0.50, 
+                                              showID = TRUE )
+
+head(vgen_frequentPatterns)
+```
+
+## Run RuleGrowth
+
+```{r}
+ruleGrowth_frequentPatterns <- runFrequentPatterns(algorithm = "RuleGrowth", 
+                                              inputFile = fpm_inputFile, 
+                                              outputFile = fpm_outputFile_RuleGrowth, 
+                                              minsup = 0.50, 
+                                              minconf = 0.50,
+                                              showID = FALSE #Does not retrieve IDs
+                                              )
+
+head(ruleGrowth_frequentPatterns)
+```
+
+## Run RuleGrowth
+
+```{r}
+erminer_frequentPatterns <- runFrequentPatterns(algorithm = "ERMiner", 
+                                              inputFile = fpm_inputFile, 
+                                              outputFile = fpm_outputFile_ERMiner, 
+                                              minsup = 0.50,
+                                              minconf = 0.5, 
+                                              showID = TRUE #Does not retrieve IDs
+                                              )
+
+head(erminer_frequentPatterns)
 ```

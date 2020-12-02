@@ -16,5 +16,8 @@ getNamesFromCovariateId <- function(data, covariateDataObject, fileToSave){
   # Filtering useful variables
   #  df_input2 <- dplyr::select(df_input, c(rowId, eventId, SIZE, covariateLabel))
   #  return(df_input2)
+  row_id <- unique(df_input$rowId)
+  #result <- list(df_input, row_id)
+  #return(result)
   return(df_input)
 }
