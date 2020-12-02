@@ -49,11 +49,13 @@ toCovariateData <- function(inputFile, objectWithIds){
     dplyr::mutate(covariateId = as.numeric(getUniqueId(Names = covariateName, idstaken = NULL)))
   
   # Assign the true patient id to rowId
-  trueRowIds <- unique(objectWithIds$rowId)
-  outputRowIds <- unique(covariateTidy$rowId)
-  idData <- dplyr::bind_cols(outputRowIds, trueRowIds) %>%
-    dplyr::rename("outputRowIds" = ...1, 
-                  "trueRowIds" = ...2) 
+  trueRowIds <- as.data.frame(unique(objectWithIds$rowId))
+  colnames(trueRowIds) <- "trueRowIds"
+  outputRowIds <- as.data.frame(unique(covariateTidy$rowId))
+  colnames(outputRowIds) <- "outputRowIds"
+  idData <- dplyr::bind_cols(outputRowIds, trueRowIds) #%>%
+    #dplyr::rename("outputRowIds" = ...1, 
+    #              "trueRowIds" = ...2) 
   
   # include unique ids in the data
   covariateDataFp <- dplyr::left_join(x = covariateTidy, y = uniqueCovariateIds, by = c("Sequences" = "covariateName"))
@@ -74,8 +76,11 @@ toCovariateData <- function(inputFile, objectWithIds){
   # Constructing covariateData's object $analysisRef
   analysisRef <- data.frame(analysisId = 999, 
                             analysisName = "FrequentPatterns", 
-                            domainId = "FP", 
-                            isBinary = "Y", 
+                            domainId = "FP",
+                            startDay = 0, 
+                            endDay = 0,
+                            isBinary = "Y",
+                            missingMeansZero = "Y",
                             stringsAsFactors = TRUE)
   
   metadata <- list()

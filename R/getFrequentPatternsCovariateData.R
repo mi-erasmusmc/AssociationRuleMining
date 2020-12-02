@@ -6,9 +6,10 @@ getFrequentPatternsCovariateData <- function(connection,
                                              cdmVersion = "5",
                                              rowIdField = "subject_id",
                                              covariateSettings,
+                                             cohortDatabaseSchema, 
                                              temporalCovariateSettings,
-                                             cohortTableIsTemp = FALSE,
                                              aggregated = FALSE) {
+  
   writeLines("Constructing frequent patterns covariates")
   if (covariateSettings$useFrequentPatterns == FALSE) {
     return(NULL)
@@ -25,8 +26,9 @@ getFrequentPatternsCovariateData <- function(connection,
                                                         cdmDatabaseSchema = cdmdatabaseschema, 
                                                         cohortDatabaseSchema = resultsdatabaseschema, 
                                                         cohortTable = cohortTable, 
+                                                        cohortId = cohortId, 
                                                         rowIdField = rowIdField, 
-                                                        covariateSettings = temporalCovariateSettings, 
+                                                        covariateSettings = covariateSettings$temporalCovariateSettings, 
                                                         cohortTableIsTemp = cohortTableIsTemp)
   
   # Preparing dataset
