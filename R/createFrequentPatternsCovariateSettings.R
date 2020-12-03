@@ -7,7 +7,12 @@ createFrequentPatternsCovariateSettings <- function(useFrequentPatterns = TRUE,
                                                     maxLength = Inf, 
                                                     maxGap = Inf, 
                                                     showID = TRUE, 
-                                                    temporalCovariateSettings) {
+                                                    temporalCovariateSettings, 
+                                                    #cohortDatabaseSchema, 
+                                                    #cohortTable, 
+                                                    #cohortId,
+                                                    #rowIdField, 
+                                                    isCohortTableTemp = FALSE) {
   covariateSettings <- list(useFrequentPatterns = useFrequentPatterns, 
                             temporalCovariateSettings = temporalCovariateSettings, 
                             algorithm = algorithm, 
@@ -17,7 +22,12 @@ createFrequentPatternsCovariateSettings <- function(useFrequentPatterns = TRUE,
                             minLength = minLength, 
                             maxLength = maxLength, 
                             maxGap = maxGap, 
-                            showID = showID)
+                            showID = showID, 
+                            #cohortDatabaseSchema = cohortDatabaseSchema, 
+                            #cohortTable = cohortTable,
+                            #cohortId = cohortId,
+                            #rowIdField = rowIdField,
+                            isCohortTableTemp = isCohortTableTemp)
   attr(covariateSettings, "fun") <- "getFrequentPatternsCovariateData"
   class(covariateSettings) <- "covariateSettings"
   return(covariateSettings)

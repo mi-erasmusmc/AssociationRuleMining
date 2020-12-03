@@ -4,10 +4,8 @@ getFrequentPatternsCovariateData <- function(connection,
                                              cohortTable,
                                              cohortId,
                                              cdmVersion = "5",
-                                             rowIdField = "subject_id",
+                                             rowIdField,
                                              covariateSettings,
-                                             cohortDatabaseSchema, 
-                                             temporalCovariateSettings,
                                              aggregated = FALSE) {
   
   writeLines("Constructing frequent patterns covariates")
@@ -23,27 +21,28 @@ getFrequentPatternsCovariateData <- function(connection,
   # Extracting covariates 
   
   temporalData <- FeatureExtraction::getDbCovariateData(connection = connection, 
-                                                        cdmDatabaseSchema = cdmdatabaseschema, 
-                                                        cohortDatabaseSchema = resultsdatabaseschema, 
+                                                        cdmDatabaseSchema = cdmDatabaseSchema, 
+                                                        cohortDatabaseSchema = cohortDatabaseSchema, 
                                                         cohortTable = cohortTable, 
                                                         cohortId = cohortId, 
                                                         rowIdField = rowIdField, 
                                                         covariateSettings = covariateSettings$temporalCovariateSettings, 
-                                                        cohortTableIsTemp = cohortTableIsTemp)
+                                                        cohortTableIsTemp = covariateSettings$isCohortTableTemp) 
   
   # Preparing dataset
-  
+  writeLines("Preparing input for running frequent pattern analysis...")
   input <- getInputFileForFrequentPatterns(covariateDataObject = temporalData, fileToSave = covariateSettings$inputFile)
   
   # Getting frequent patterns
-  
+  writeLines("Running frequent pattern analysis...")
   frequentPatterns <- runFrequentPatterns(algorithm = covariateSettings$algorithm, 
                                           inputFile = covariateSettings$inputFile, 
                                           outputFile = covariateSettings$outputFile, 
                                           minsup = covariateSettings$minsup, 
                                           showID = covariateSettings$showID)
   
-  # Converting to FeatureExtraction object 
+  # Converting to FeatureExtraction object
+  writeLines("Creating covariates out the extracted patterns...")
   fpData <- toCovariateData(inputFile = covariateSettings$outputFile, objectWithIds = input)
   
   assign("frequentPatternsData", frequentPatterns, envir = .GlobalEnv)
