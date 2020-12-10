@@ -23,7 +23,7 @@ getUniqueId <- function(Names, idstaken, idrange=NULL){
 
 toCovariateData <- function(inputFile, objectWithIds){
   
-  inputfile = read.delim(inputFile, header = FALSE)
+  inputfile = read.delim(inputFile, header = FALSE, blank.lines.skip = TRUE)
   rowIds <- objectWithIds$rowId
   
   if (any(stringi::stri_detect_fixed(inputfile$V1, "#SID", max_count = 1)) == FALSE) {
@@ -38,6 +38,9 @@ toCovariateData <- function(inputFile, objectWithIds){
     dplyr::mutate(covariateValue = 1) %>%
     dplyr::arrange(as.numeric(rowId))  
   
+  # Making rowId numeric
+  covariateTidy$rowId <- as.numeric(covariateTidy$rowId)
+  
   # Fixing names of sequences
   covariateTidy$Sequences <- stringr::str_replace_all(covariateTidy$Sequences, "-1", "=>")
   covariateTidy$Sequences <- stringr::str_replace_all(covariateTidy$Sequences, "=>$", "")
@@ -51,17 +54,23 @@ toCovariateData <- function(inputFile, objectWithIds){
   # Assign the true patient id to rowId
   trueRowIds <- as.data.frame(unique(objectWithIds$rowId))
   colnames(trueRowIds) <- "trueRowIds"
-  outputRowIds <- as.data.frame(unique(covariateTidy$rowId))
-  colnames(outputRowIds) <- "outputRowIds"
-  idData <- dplyr::bind_cols(outputRowIds, trueRowIds) #%>%
+  
+  trueRowIds <- trueRowIds %>%
+    dplyr::mutate(row_no = dplyr::row_number(), 
+                  java_row_id = row_no - 1)
+  
+  #outputRowIds <- as.data.frame(unique(covariateTidy$rowId))
+ # colnames(outputRowIds) <- "outputRowIds"
+  #idData <- dplyr::bind_cols(outputRowIds, trueRowIds) #%>%
     #dplyr::rename("outputRowIds" = ...1, 
     #              "trueRowIds" = ...2) 
+  
   
   # include unique ids in the data
   covariateDataFp <- dplyr::left_join(x = covariateTidy, y = uniqueCovariateIds, by = c("Sequences" = "covariateName"))
   
   # include true row ids
-  covariateDataFp <- dplyr::left_join(x = covariateDataFp, y= idData, by = c("rowId" = "outputRowIds"))
+  covariateDataFp <- dplyr::left_join(x = covariateDataFp, y= trueRowIds, by = c("rowId" = "java_row_id"))
   
   # Constructing covariateData's object $covariates
   covariates <- covariateDataFp %>%

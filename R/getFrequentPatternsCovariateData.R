@@ -22,7 +22,7 @@ getFrequentPatternsCovariateData <- function(connection,
   
   temporalData <- FeatureExtraction::getDbCovariateData(connection = connection, 
                                                         cdmDatabaseSchema = cdmDatabaseSchema, 
-                                                        cohortDatabaseSchema = cohortDatabaseSchema, 
+                                                        cohortDatabaseSchema = covariateSettings$cohortDatabaseSchema, 
                                                         cohortTable = cohortTable, 
                                                         cohortId = cohortId, 
                                                         rowIdField = rowIdField, 

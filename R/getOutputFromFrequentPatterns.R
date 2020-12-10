@@ -1,5 +1,5 @@
 getOutputFromFrequentPatterns <- function(inputFile, numberOfSequenceIDs, showID) {
-  inputfile = read.delim(inputFile, header = FALSE)
+  inputfile = read.delim(inputFile, header = FALSE, blank.lines.skip = TRUE)
   
   # Condition when agorithm extracted Rules
   if (any(stringi::stri_detect_fixed(inputfile$V1, "#CONF", max_count = 1) == TRUE) == TRUE) {
