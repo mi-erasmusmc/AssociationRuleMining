@@ -12,7 +12,10 @@ getNamesFromCovariateId <- function(data, covariateDataObject, fileToSave){
   write.table(names.df$SPMFnameID, paste(fileToSave), quote = FALSE, row.names = FALSE, col.names = FALSE, append = TRUE)
   data$covariateId <- as.character(data$covariateId)
   data2 <- tidyr::separate_rows(data, covariateId)
-  df_input <- dplyr::inner_join(data2, names.df, by = "covariateId")
+  df_input <- dplyr::inner_join(data2, names.df, by = "covariateId") %>%
+    dplyr::group_by(rowId) %>%
+    dplyr::mutate(Java_Row_Id = dplyr::row_number()-1) %>%
+    dplyr::ungroup()
   # Filtering useful variables
   #  df_input2 <- dplyr::select(df_input, c(rowId, eventId, SIZE, covariateLabel))
   #  return(df_input2)

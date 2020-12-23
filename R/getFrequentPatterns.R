@@ -7,10 +7,10 @@ getFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, mincon
   #maxLengthvalue = jdx::convertToJava(maxLength, scalars.as.objects = TRUE)
   #maxGapvalue = jdx::convertToJava(maxGap, scalars.as.objects = TRUE)
   if (maxLength == Inf) {
-  maxLengthvalue = as.integer(1000000000)
+  maxLengthValue = as.integer(1000000000)
   }
   if (maxGap == Inf){ 
-    maxGapvalue = as.integer(1000000000)
+    maxGapValue = as.integer(1000000000)
   }
   if (maxAntecedentLength == Inf){
   maxAntecedentLength = as.integer(1000000000)
@@ -24,19 +24,19 @@ getFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, mincon
   
   #Below I replaced the Inf values for maxLength and maxGap with 1000 since Inf is not a Java object for SPAM and prefixSpan
   if (algorithm == "SPAM" ) {
-    executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, minLength, maxLength, maxGap, outputID, sep = " ")
+    executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, minLength, maxLengthValue, maxGapValue, outputID, sep = " ")
   } else if (algorithm == "SPADE") {
       executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, outputID, sep = " ")
   } else if (algorithm == "prefixSpan"){
-      executable <- paste("java -jar", spmf.dir, "run", "PrefixSpan", inputFile, outputFile, minsup, maxLength, outputID, sep = " ")
+      executable <- paste("java -jar", spmf.dir, "run", "PrefixSpan", inputFile, outputFile, minsup, maxLengthValue, outputID, sep = " ")
   } else if (algorithm == "Clasp") {
       executable <- paste("java -jar", spmf.dir, "run", "ClaSP", inputFile, outputFile, minsup, outputID, sep = " ")
   } else if (algorithm == "CM-Clasp"){
      executable <- paste("java -jar", spmf.dir, "run", "CM-ClaSP", inputFile, outputFile, minsup, outputID, sep = " ")
   } else if (algorithm == "VMSP") {
-    executable <- paste("java -jar", spmf.dir, "run", "VMSP", inputFile, outputFile, minsup, maxLengthvalue, maxGapvalue, outputID, sep = " ")
+    executable <- paste("java -jar", spmf.dir, "run", "VMSP", inputFile, outputFile, minsup, maxLengthValue, maxGapValue, outputID, sep = " ")
   } else if (algorithm == "VGEN") {
-    executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, maxLengthvalue, maxGapvalue, outputID, sep = " ")
+    executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, maxLengthValue, maxGapValue, outputID, sep = " ")
   } else if (algorithm == "RuleGrowth") {
     executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, minconf, maxAntecedentLength, maxConsequentLength, outputID, sep = " ")
   } else if (algorithm == "ERMiner") {
