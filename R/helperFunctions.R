@@ -52,12 +52,22 @@ toCovariateData <- function(inputFile, objectWithIds){
     dplyr::mutate(covariateId = as.numeric(getUniqueId(Names = covariateName, idstaken = NULL)))
   
   # Assign the true patient id to rowId
-  trueRowIds <- as.data.frame(unique(objectWithIds$rowId))
-  colnames(trueRowIds) <- "trueRowIds"
   
-  trueRowIds <- trueRowIds %>%
-    dplyr::mutate(row_no = dplyr::row_number(), 
-                  java_row_id = row_no - 1)
+  #trueRowIds <- as.data.frame(unique(objectWithIds$rowId))
+  #colnames(trueRowIds) <- "trueRowIds"
+  
+  #trueRowIds <- trueRowIds %>%
+  #  dplyr::mutate(row_no = dplyr::row_number(), 
+  #                java_row_id = row_no - 1)
+  
+  trueRowIds <- objectWithIds %>%
+    select("rowId", "SPMFrowId") 
+  
+  trueIdDf <- data.frame("rowId" = unique(trueRowIds$rowId),
+                         "SPMFrowId" = unique(trueRowIds$SPMFrowId))
+  
+  
+ 
   
   #outputRowIds <- as.data.frame(unique(covariateTidy$rowId))
  # colnames(outputRowIds) <- "outputRowIds"
@@ -70,12 +80,12 @@ toCovariateData <- function(inputFile, objectWithIds){
   covariateDataFp <- dplyr::left_join(x = covariateTidy, y = uniqueCovariateIds, by = c("Sequences" = "covariateName"))
   
   # include true row ids
-  covariateDataFp <- dplyr::left_join(x = covariateDataFp, y= trueRowIds, by = c("rowId" = "java_row_id"))
+  covariateDataFp <- dplyr::left_join(x = covariateDataFp, y= trueIdDf, by = c("rowId" = "SPMFrowId"))
   
   # Constructing covariateData's object $covariates
   covariates <- covariateDataFp %>%
-    dplyr::select(trueRowIds, covariateId, covariateValue) %>%
-    dplyr::rename("rowId" = "trueRowIds")
+    dplyr::select(rowId, covariateId, covariateValue) #%>%
+   # dplyr::rename("rowId" = "trueRowIds")
   
   # Constructing covariateData's object $covariateRef
   covariateRef <- uniqueCovariateIds %>%
