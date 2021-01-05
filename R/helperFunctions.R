@@ -110,3 +110,42 @@ toCovariateData <- function(inputFile, objectWithIds){
   class(result) <- "CovariateData"
   return(result)
 }
+
+appendCovariateData<- function(tempCovariateData,covariateData){
+  ##==## appends covariate objects ##==##
+  if (is.null(covariateData)) {
+    covariateData <- tempCovariateData
+  } else {
+    if (hasData(covariateData$covariates)) {
+      if (hasData(tempCovariateData$covariates)) {
+        Andromeda::appendToTable(covariateData$covariates, tempCovariateData$covariates)
+      }
+    } else if (hasData(tempCovariateData$covariates)) {
+      covariateData$covariates <- tempCovariateData$covariates
+    }
+    if (hasData(covariateData$covariatesContinuous)) {
+      if (hasData(tempCovariateData$covariatesContinuous)) {
+        Andromeda::appendToTable(covariateData$covariatesContinuous, tempCovariateData$covariatesContinuous)
+      } else if (hasData(tempCovariateData$covariatesContinuous)) {
+        covariateData$covariatesContinuous <- tempCovariateData$covariatesContinuous
+      }
+    }
+    Andromeda::appendToTable(covariateData$covariateRef, tempCovariateData$covariateRef)
+    Andromeda::appendToTable(covariateData$analysisRef, tempCovariateData$analysisRef)
+    for (name in names(attr(tempCovariateData, "metaData"))) {
+      if (is.null(attr(covariateData, "metaData")[name])) {
+        attr(covariateData, "metaData")[[name]] <- attr(tempCovariateData, "metaData")[[name]]
+      } else {
+        attr(covariateData, "metaData")[[name]] <- list(attr(covariateData, "metaData")[[name]],
+                                                        attr(tempCovariateData, "metaData")[[name]])
+      }
+    }
+  }
+  return(covariateData)
+}
+
+hasData <- function(data) {
+  ##==## checks if data has data ##==##
+  return(!is.null(data) && (data %>% count() %>% pull()) > 0)
+}
+
