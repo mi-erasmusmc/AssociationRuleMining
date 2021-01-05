@@ -30,6 +30,54 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
+<style type="text/css">
+a.anchor-section {margin-left: 10px; visibility: hidden; color: inherit;}
+a.anchor-section::before {content: '#';}
+.hasAnchor:hover a.anchor-section {visibility: visible;}
+</style>
+<script>// Anchor sections v1.0 written by Atsushi Yasumoto on Oct 3rd, 2020.
+document.addEventListener('DOMContentLoaded', function() {
+  // Do nothing if AnchorJS is used
+  if (typeof window.anchors === 'object' && anchors.hasOwnProperty('hasAnchorJSLink')) {
+    return;
+  }
+
+  const h = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+  // Do nothing if sections are already anchored
+  if (Array.from(h).some(x => x.classList.contains('hasAnchor'))) {
+    return null;
+  }
+
+  // Use section id when pandoc runs with --section-divs
+  const section_id = function(x) {
+    return ((x.classList.contains('section') || (x.tagName === 'SECTION'))
+            ? x.id : '');
+  };
+
+  // Add anchors
+  h.forEach(function(x) {
+    const id = x.id || section_id(x.parentElement);
+    if (id === '') {
+      return null;
+    }
+    let anchor = document.createElement('a');
+    anchor.href = '#' + id;
+    anchor.classList = ['anchor-section'];
+    x.classList.add('hasAnchor');
+    x.appendChild(anchor);
+  });
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
 
 
 <style type="text/css">code{white-space: pre;}</style>
@@ -333,6 +381,9 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <li><p>Association rule mining can be implemented using just two functions: <code>getInputFileForAssociationRules()</code> and <code>runAssociationRules()</code>.</p></li>
 <li><p>Frequent pattern mining can be implemented using just two functions: <code>getInputFileForFrequentPatterns()</code> and <code>runFrequentPatterns()</code>. Additionally, the <code>getIdDataFrame()</code> provides a data frame object that indicates the presence or not of a sequence.</p></li>
 </ul>
+<ol start="3" style="list-style-type: decimal">
+<li>For use in other OHDSI HADES packages, eg FeatureExtraction: use <code>createFrequentPatternsCovariateSettings()</code> to create the <code>covariateSettings</code> object. By running <code>getDbcovariateData()</code> all extracted FPs are included in a <code>covariateData</code> object. Also, at the moment Frequent Patterns can be used with <code>getPlpData()</code> but caution should be addressed on the workflow. An example will b soon published where it discusses the current implementations and possible alternatives that should be considered.</li>
+</ol>
 <p><strong>Notes:</strong><br />
 - Input files should be .txt files.<br />
 - None of the functions are exported at the moment. Make sure to use <code>devtools:load_all()</code> after loading the package.<br />
@@ -364,8 +415,8 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb1-10"><a href="#cb1-10"></a>                                    <span class="dt">cohortTableIsTemp =</span> <span class="ot">TRUE</span>) <span class="co">#If the cohort table is temporary or not</span></span></code></pre></div>
 <p>A simple pipeline for generating temporal covariates to be used for FPM is the following:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a>TemporalcovariateSettings &lt;-<span class="st"> </span><span class="kw">createTemporalCovariateSettings</span>(<span class="dt">useConditionOccurrence =</span> <span class="ot">TRUE</span>,</span>
-<span id="cb2-2"><a href="#cb2-2"></a>                                                      <span class="dt">temporalStartDays =</span> <span class="kw">seq</span>(<span class="op">-</span>(<span class="dv">60</span><span class="op">*</span><span class="dv">365</span>), <span class="dv">-1</span>, <span class="dt">by =</span> <span class="dv">1</span>) ,</span>
-<span id="cb2-3"><a href="#cb2-3"></a>                                                      <span class="dt">temporalEndDays =</span> <span class="kw">seq</span>(<span class="op">-</span>(<span class="dv">60</span><span class="op">*</span><span class="dv">365</span>)<span class="op">+</span><span class="dv">1</span>, <span class="dv">0</span>, <span class="dt">by =</span> <span class="dv">1</span>))</span>
+<span id="cb2-2"><a href="#cb2-2"></a>                                                      <span class="dt">temporalStartDays =</span> <span class="kw">seq</span>(<span class="op">-</span>(<span class="dv">99</span><span class="op">*</span><span class="dv">365</span>), <span class="dv">-1</span>, <span class="dt">by =</span> <span class="dv">2</span>) ,</span>
+<span id="cb2-3"><a href="#cb2-3"></a>                                                      <span class="dt">temporalEndDays =</span> <span class="kw">seq</span>(<span class="op">-</span>(<span class="dv">99</span><span class="op">*</span><span class="dv">365</span>)<span class="op">+</span><span class="dv">1</span>, <span class="dv">0</span>, <span class="dt">by =</span> <span class="dv">2</span>))</span>
 <span id="cb2-4"><a href="#cb2-4"></a></span>
 <span id="cb2-5"><a href="#cb2-5"></a><span class="co"># Extract covariates</span></span>
 <span id="cb2-6"><a href="#cb2-6"></a>TemporalcovariateData&lt;-<span class="st"> </span><span class="kw">getDbCovariateData</span>(<span class="dt">connection =</span> connection, </span>
@@ -382,7 +433,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">getInputFileForAssociationRules</span>(<span class="dt">covariateDataObject =</span> covariateData, <span class="dt">fileToSave =</span> <span class="st">&quot;AssociationRulesExample.txt&quot;</span>)</span></code></pre></div>
 <p>Note that the <code>covariateDataObject</code> argument takes the covariate data object generated by <code>FeatureExtarction</code>. The <code>fileToSave</code> argument takes the path of the file where the input data is going to be stored and should end in ‘.txt’.</p>
 <p>Similarly for FPM, the same notes as above hold.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">getInputFileForFrequentPatterns</span>(<span class="dt">covariateDataObject =</span> TemporalcovariateData, <span class="dt">fileToSave =</span> <span class="st">&quot;FrequentPatternsExample.txt&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a>FPinput &lt;-<span class="st"> </span><span class="kw">getInputFileForFrequentPatterns</span>(<span class="dt">covariateDataObject =</span> TemporalcovariateData, <span class="dt">fileToSave =</span> <span class="st">&quot;FrequentPatternsExample.txt&quot;</span>)</span></code></pre></div>
 </div>
 <div id="mining" class="section level3">
 <h3>Mining</h3>
@@ -438,9 +489,12 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb6-5"><a href="#cb6-5"></a>                                        <span class="dt">showID =</span> <span class="ot">TRUE</span>)</span></code></pre></div>
 <p>The function generates another text file saved as “FrequentPatternsExample_Results.txt” in the current working directory. It prints on the screen the number of mined sequences, the time required, memory used and the location of where the output is stored. It also, transforms the output to an R object and therefore needs to be saved.</p>
 <p>Additionally for FPM, <code>getIdDataFrame()</code> generates a data frame object, indicating the presence or not of sequence for each patient id. It is only applicable when <code>showID = TRUE</code> when running <code>runFrequentPatterns()</code> and accepts as input the output <strong>.txt</strong> file of the previous call.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">getIdDataFrame</span>(<span class="dt">inputFile =</span> <span class="st">&quot;FrequentPatternsExample_Results.txt&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">getIdDataFrame</span>(<span class="dt">inputFile =</span> <span class="st">&quot;FrequentPatternsExample_Results.txt&quot;</span>, <span class="dt">objectWithIds =</span> FPinput)</span></code></pre></div>
 </div>
 </div>
+</div>
+<div id="use-in-other-packages" class="section level1">
+<h1>Use in other packages</h1>
 </div>
 
 

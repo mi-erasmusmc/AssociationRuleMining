@@ -22,12 +22,14 @@ getFrequentPatternsCovariateData <- function(connection,
   
   temporalData <- FeatureExtraction::getDbCovariateData(connection = connection, 
                                                         cdmDatabaseSchema = cdmDatabaseSchema, 
-                                                        cohortDatabaseSchema = cohortDatabaseSchema, 
+                                                        cohortDatabaseSchema = covariateSettings$cohortDatabaseSchema, 
                                                         cohortTable = cohortTable, 
                                                         cohortId = cohortId, 
                                                         rowIdField = rowIdField, 
                                                         covariateSettings = covariateSettings$temporalCovariateSettings, 
                                                         cohortTableIsTemp = covariateSettings$isCohortTableTemp) 
+  
+  #FeatureExtraction::saveCovariateData(temporalData, file = "temporalCovariateData")
   
   # Preparing dataset
   writeLines("Preparing input for running frequent pattern analysis...")

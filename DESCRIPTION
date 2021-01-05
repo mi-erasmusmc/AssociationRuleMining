@@ -16,14 +16,16 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports: 
     dplyr,
-    SqlRender, 
-    rJava, 
-    tidyr, 
-    stringr, 
-    stringi
+    SqlRender,
+    rJava,
+    tidyr,
+    stringr,
+    stringi,
+    lifecycle
 Depends:
     R (>=  3.4.0)
 Suggests: 
     knitr,
     rmarkdown
 VignetteBuilder: knitr
+RdMacros: lifecycle
