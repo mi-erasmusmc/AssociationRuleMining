@@ -23,7 +23,7 @@ getUniqueId <- function(Names, idstaken, idrange=NULL){
 
 toCovariateData <- function(inputFile, objectWithIds){
   
-  inputfile = read.delim(inputFile, header = FALSE, blank.lines.skip = TRUE)
+  inputfile = vroom::vroom(file = inputFile, col_names = FALSE, trim_ws = TRUE, progress = TRUE)
   rowIds <- objectWithIds$rowId
   
   if (any(stringi::stri_detect_fixed(inputfile$V1, "#SID", max_count = 1)) == FALSE) {
@@ -31,8 +31,8 @@ toCovariateData <- function(inputFile, objectWithIds){
   }
   
   covariateTidy <- inputfile %>%
-    dplyr::mutate(rowId = stringr::str_replace_all(V1, ".*SID: ", ""), 
-                  Sequences = stringr::str_replace_all(V1, ".#.*", "")) %>%
+    dplyr::mutate(rowId = gsub(x = X1, pattern = ".*SID: ", replacement = ""), 
+                  Sequences = gsub(x = X1, pattern =".#.*", replacement = "")) %>%
     dplyr::select(Sequences, rowId) %>%
     tidyr::separate_rows(rowId, sep = " ") %>%
     dplyr::mutate(covariateValue = 1) %>%
@@ -42,8 +42,8 @@ toCovariateData <- function(inputFile, objectWithIds){
   covariateTidy$rowId <- as.numeric(covariateTidy$rowId)
   
   # Fixing names of sequences
-  covariateTidy$Sequences <- stringr::str_replace_all(covariateTidy$Sequences, "-1", "=>")
-  covariateTidy$Sequences <- stringr::str_replace_all(covariateTidy$Sequences, "=>$", "")
+  covariateTidy$Sequences <- gsub(x = covariateTidy$Sequences, pattern = "-1", replacement = "=>")
+  covariateTidy$Sequences <- gsub(x = covariateTidy$Sequences,pattern = "=>$", replacement = "")
   
   # Constructing unique covariate Ids
   uniqueSeqs <- unique(covariateTidy$Sequences)
