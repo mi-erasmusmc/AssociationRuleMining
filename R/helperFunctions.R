@@ -23,10 +23,10 @@ getUniqueId <- function(Names, idstaken, idrange=NULL){
 
 toCovariateData <- function(inputFile, objectWithIds){
   
-  inputfile = vroom::vroom(file = inputFile, col_names = FALSE, trim_ws = TRUE, progress = TRUE)
+  inputfile = vroom::vroom(file = inputFile, col_names = FALSE, trim_ws = TRUE, progress = TRUE, delim = "///" )
   rowIds <- objectWithIds$rowId
   
-  if (any(stringi::stri_detect_fixed(inputfile$V1, "#SID", max_count = 1)) == FALSE) {
+  if (any(stringi::stri_detect_fixed(inputfile$X1, "#SID", max_count = 1)) == FALSE) {
     stop("The input file provided does not contain sequence IDs")
   }
   
