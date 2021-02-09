@@ -31,7 +31,7 @@ getFrequentPatternsCovariateData <- function(connection,
   
   t1duration <- Sys.time() - t1start
   
-  message(paste0("Extracting covariates took", round(t1duration, 2), "minutes."))
+  writeLines(paste("Extracting covariates took", round(t1duration, 2), paste0(attr(t1duration, which = "units"), "."), sep = " "))
   
   # Saving covariate data object 
   ## this should be saveed in a formal location folder ie. "analysis folder" as it is a costly operation
@@ -46,7 +46,7 @@ getFrequentPatternsCovariateData <- function(connection,
   
   t2duration <- Sys.time() - t2start
   
-  message(paste0("Preparing input dataset took", round(t2duration, 2), "minutes."))
+  writeLines(paste("Preparing input dataset took", round(t2duration, 2), paste0(attr(t2duration, which = "units"), "."), sep = " "))
   
   # Getting frequent patterns
   writeLines("Running frequent pattern analysis...")
@@ -61,10 +61,10 @@ getFrequentPatternsCovariateData <- function(connection,
   
   t3duration <- Sys.time() - t3start
   
-  message(paste0("Extracting frequent patterns took", round(t3duration, 2), "minutes."))
+  writeLines(paste("\nExtracting frequent patterns took", round(t3duration, 2), paste0(attr(t3duration, which = "units"), "."), sep = " "))
   
   # Converting to FeatureExtraction object
-  writeLines("Creating covariates out the extracted patterns...")
+  writeLines("Creating covariates out of the extracted patterns...")
   
   t4start <- Sys.time()
   
@@ -72,7 +72,7 @@ getFrequentPatternsCovariateData <- function(connection,
   
   t4duration <- Sys.time() - t4start 
   
-  message(paste0("Creating covariate data object took", round(t4duration, 2), "minutes."))
+  writeLines(paste("Creating covariate data object took", round(t4duration, 2), paste0(attr(t4duration, which = "units"), "."), sep = " "))
   
   assign("frequentPatternsData", frequentPatterns, envir = .GlobalEnv)
   return(fpData)

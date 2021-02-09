@@ -7,7 +7,7 @@ toCovariateDataObject <- function(fileWithFPs, objectWithIds, covariateDataObjec
   
   t1duration <- Sys.time() - t1start
   
-  message(paste0("Writing FPs as covariates took", round(t1duration, 2), "minutes."))
+  message(paste("Writing FPs as covariates took", round(t1duration, 2), paste0(attr(t1duration, which = "units"), "."), sep = " "))
   
   t2start <- Sys.time()
   
@@ -16,7 +16,7 @@ toCovariateDataObject <- function(fileWithFPs, objectWithIds, covariateDataObjec
   
   t2duration <- Sys.time() - t2start
   
-  message(paste0("Appending covariates took", round(t2duration, 2), "minutes."))
+  message(paste("Appending covariates took", round(t2duration, 2), paste0(attr(t2duration, which = "units"), "."), sep = " "))
   
   return(covariateData)
 }
