@@ -21,6 +21,7 @@ Imports:
     tidyr,
     stringr,
     stringi,
+    vroom,
     lifecycle
 Depends:
     R (>=  3.4.0)
