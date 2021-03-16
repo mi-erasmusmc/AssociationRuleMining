@@ -1,7 +1,7 @@
-getFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, minconf, minLength = 1, maxLength = Inf, maxGap = Inf, maxAntecedentLength = Inf, maxConsequentLength = 1, top_k = 1, delta = 0, showID = FALSE) {
+getFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, minconf, minLength = 1, maxLength = Inf, maxGap = Inf, maxAntecedentLength = Inf, maxConsequentLength = 1, top_k = 1, delta = 0, required_items = "", showID = FALSE) {
   
   spmf.dir <- rJava::.jclassPath()[stringr::str_ends(rJava::.jclassPath(), "spmf.jar")]
-  frequentSequencesAlgorithms <- c("SPAM", "SPADE", "prefixSpan", "Clasp", "CM-Clasp", "VMSP", "VGEN", "RuleGrowth", "ERMiner")
+  frequentSequencesAlgorithms <- c("SPAM", "SPADE", "prefixSpan", "CM-SPADE", "CM-SPAM", "Clasp", "CM-Clasp", "BIDE+", "VMSP", "VGEN", "RuleGrowth", "ERMiner", "TNS", "TopSeqRules")
   #`%notin%` <- Negate(`%in%`)
   outputID = paste(tolower(showID))
   #maxLengthvalue = jdx::convertToJava(maxLength, scalars.as.objects = TRUE)
@@ -24,6 +24,12 @@ getFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, mincon
   
   maxConsequentLength = maxConsequentLength
   
+  if (required_items == ""){
+    req_items = paste("\"\"")
+  } else {
+    req_items = paste(required_items, collapse = ",")
+  }
+  
   if(!all(algorithm %in% frequentSequencesAlgorithms)){
     stop("Algorithm is not supported at the moment!")
   }
@@ -39,14 +45,14 @@ getFrequentPatterns <- function(algorithm, inputFile, outputFile, minsup, mincon
   } else if (algorithm == "CM-SPADE") {
     executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, outputID, sep = " ")
   } else if (algorithm == "CM-SPAM") {
-    executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, minLength, maxLengthValue, maxGapValue, outputID, sep = " ")
+    executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, minLength, maxLengthValue, req_items, maxGapValue, outputID, sep = " ")
   } else if (algorithm == "Clasp") {
     # Closed patterns
      executable <- paste("java -jar", spmf.dir, "run", "ClaSP", inputFile, outputFile, minsup, outputID, sep = " ")
   } else if (algorithm == "CM-Clasp"){
      executable <- paste("java -jar", spmf.dir, "run", "CM-ClaSP", inputFile, outputFile, minsup, outputID, sep = " ")
-  } else if (algorithm == "Bide+") {
-    executable <- paste("java -jar", spmf.dir, "run", "BIDE+", inputFile, outputFile, minsup, outputID, sep = " ")
+  } else if (algorithm == "BIDE+") {
+    executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, maxLengthValue, outputID, sep = " ")
   } else if (algorithm == "VMSP") {
     # Maximal patters
     executable <- paste("java -jar", spmf.dir, "run", "VMSP", inputFile, outputFile, minsup, maxLengthValue, maxGapValue, outputID, sep = " ")
