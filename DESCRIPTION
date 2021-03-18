@@ -22,7 +22,8 @@ Imports:
     stringr,
     stringi,
     vroom,
-    lifecycle
+    lifecycle, 
+    splitstackshape
 Depends:
     R (>=  3.4.0)
 Suggests: 
