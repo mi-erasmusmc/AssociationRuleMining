@@ -1,6 +1,6 @@
 addFrequentPatternsToAndromeda <- function(plpDataObject, fileWithFPs, objectWithIds, fileToSave) {
-  if (class(plpDataObject) == "plpData") {
-    error("plpDataOnject should be a plpData object!")
+  if (!class(plpDataObject) == "plpData") {
+    stop("plpDataObject should be a plpData object!")
   }
   
   oldPlpDataObject = plpDataObject
@@ -9,7 +9,7 @@ addFrequentPatternsToAndromeda <- function(plpDataObject, fileWithFPs, objectWit
   covariateData <- Andromeda::copyAndromeda(oldPlpDataObject$covariateData)
   
   #Step 2: add in there the FPs as covariates
-  covariateData <- toCovariateDataObject(fileWithFPs = fileWithFPs, objectWithIds = objectWithIds) 
+  covariateData <- toCovariateDataObject(fileWithFPs = fileWithFPs, objectWithIds = objectWithIds, covariateDataObject = covariateData) 
   
   #Step3: copy the old plpData[covariateData] attribute called "metadata"
   metaData <- attr(oldPlpDataObject$covariateData, "metaData")
