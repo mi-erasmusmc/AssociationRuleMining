@@ -15,13 +15,13 @@ addFrequentPatternsToAndromeda <- function(plpDataObject, fileWithFPs, objectWit
   metaData <- attr(oldPlpDataObject$covariateData, "metaData")
   
   #step 3.5: and addong the old metadata to the new object
-  attr(covariateData, "metaData") <- metadata
+  attr(covariateData, "metaData") <- metaData
   
   # step4 : Giving the class name required
   class(covariateData) <- "CovariateData"
   
   # step 4.5: giving also the attribute that is created from the FeatureExtraction package
-  attr(class(covariateData, "package")) <- "FeatureExtraction"
+  attr(class(covariateData), "package") <- "FeatureExtraction"
   
   # Step 5: copying the old plp data object
   newPlpDataObject <- plpDataObject
