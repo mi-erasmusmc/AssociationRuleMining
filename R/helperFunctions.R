@@ -103,11 +103,14 @@ toCovariateData <- function(inputFile, objectWithIds){
                             stringsAsFactors = TRUE)
   
   metadata <- list()
+  metadata$populationSize <- length(unique(covariates$rowId))
+  metadata$cohortId <- -1
   result <- Andromeda::andromeda(covariates = covariates, 
                                  covariateRef = covariateRef, 
                                  analysisRef = analysisRef)
-  attr(result, "metadata") <- metadata
+  attr(result, "metaData") <- metadata
   class(result) <- "CovariateData"
+  attr(class(result), "package") <- "FeatureExtraction"
   return(result)
 }
 
