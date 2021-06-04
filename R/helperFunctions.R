@@ -82,6 +82,9 @@ toCovariateData <- function(inputFile, objectWithIds){
   # include true row ids
   covariateDataFp <- dplyr::left_join(x = covariateDataFp, y= trueIdDf, by = c("rowId" = "SPMFrowId"))
   
+  # adding 1 to match R's enum
+  covariateDataFp$rowId <- covariateDataFp$rowId + 1 
+  
   # Constructing covariateData's object $covariates
   covariates <- covariateDataFp %>%
     dplyr::select(rowId, covariateId, covariateValue) #%>%
