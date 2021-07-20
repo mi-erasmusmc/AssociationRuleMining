@@ -155,3 +155,16 @@ hasData <- function(data) {
   return(!is.null(data) && (data %>% count() %>% pull()) > 0)
 }
 
+getTextFile <- function(fpObject, fileName){
+  fpObject %>%
+    mutate(new_seq = str_replace_all(Seqs, pattern = "_", replacement = " "), 
+           new_seq = str_replace_all(Seqs, pattern = "=>", replacement = " -1 "), 
+           new_seq = paste(new_seq, "-1", sep = " ")) %>%
+    group_by(new_seq) %>%
+    mutate(new_ids = paste0(new_row_Ids, collapse = " "), 
+           output = paste(new_seq, "#SUP:", new_Count, "#SID:", new_ids, sep = " ")) %>%
+    ungroup() %>%
+    select(output) %>%
+    distinct() %>%
+    write.table(file = paste0(fileName), quote = FALSE, row.names = FALSE, col.names = FALSE)
+}
