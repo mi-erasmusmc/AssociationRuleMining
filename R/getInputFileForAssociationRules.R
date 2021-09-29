@@ -23,4 +23,6 @@ getInputFileForAssociationRules <- function(covariateDataObject, fileToSave){
   
   message("Preparing input data for Association Rules...")
   getInputDataForAssociationRules(NamesData, filename = fileToSave)
+  
+  return(NamesData)
 }
