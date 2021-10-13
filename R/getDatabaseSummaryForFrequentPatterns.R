@@ -42,7 +42,7 @@ getDatabaseSummaryForFrequentPatterns <- function(data = data){
     )
   
  vec3 <- eventLength %>%
-   summarise("Average events size" = mean(eventLength),
+   summarise("Average event size" = mean(eventLength),
              'Standard deviation of event size' = sd(eventLength),
              "Median event length" = median(eventLength),
              "5th percentile" = quantile(eventLength)[[2]],
