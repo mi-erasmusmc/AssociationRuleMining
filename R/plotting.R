@@ -81,9 +81,32 @@ countSequences <- function(inputFile, finalSeqs, objectWithIds){
   return(iddf.plot)
 }
 
+createNodesDF <- function(data){
+  nodesVector <- unique(c(data$from, data$to))
+  nodes <- data.frame(node = c(0:(length(nodesVector)-1)), 
+                      name = nodesVector)
+  return(nodes)
+}
+
+createLinksDF <- function(links, nodes){
+  linksDF <- dplyr::inner_join(x = links, y = nodes, by= c("from" = "name"))
+  linksDF <- dplyr::inner_join(x = linksDF, y = nodes, by= c("to" = "name"))
+  return(linksDF)
+}
+
 plot.sankey <- function(data = data, plot = c("Sankey"), inputFile, objectWithIds ){
   prep <- prepareResult(data, plot = "Sankey")
   prep2 <- extractFPs(prep[[1]], prep[[2]]$seq_id)
   prep3 <- countSequences(inputFile = inputFile, objectWithIds = objectWithIds, finalSeqs = prep2$new_seq)
   return(prep3)
 } 
+
+prepareSankey <- function(data = data, plot = c("Sankey"), inputFile, objectWithIds ){
+  prep <- prepareResult(data, plot = "Sankey")
+  prep2 <- extractFPs(prep[[1]], prep[[2]]$seq_id)
+  prep3 <- countSequences(inputFile = inputFile, objectWithIds = objectWithIds, finalSeqs = prep2$new_seq)
+  nodes <- createNodesDF(prep3)
+  links <- createLinksDF(links = prep3, nodes = nodes)
+  output <- list(links, nodes)
+  return(output)
+}
