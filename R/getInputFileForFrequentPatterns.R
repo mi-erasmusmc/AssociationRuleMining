@@ -7,6 +7,10 @@ getInputFileForFrequentPatterns <- function(covariateDataObject, fileToSave) {
     stop("Filename should be a .txt file")
   }
   
+  # if(!dir.exists(fileToSave)){
+  #   dir.create(fileToSave)
+  # }
+  # 
   #if(file.exists(fileToSave)){
   #  warning("File already exists!")
   #  overwrite <- menu(c("Yes", "No"), title="Should it be overwritten?")  

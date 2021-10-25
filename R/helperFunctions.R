@@ -23,16 +23,16 @@ getUniqueId <- function(Names, idstaken, idrange=NULL){
 
 toCovariateData <- function(inputFile, objectWithIds){
   
-  inputfile = read.delim(inputFile, header = FALSE, blank.lines.skip = TRUE)
+  inputfile = vroom::vroom(file = inputFile, col_names = FALSE, col_types = "c", trim_ws = TRUE, progress = TRUE, delim = "///" )
   rowIds <- objectWithIds$rowId
   
-  if (any(stringi::stri_detect_fixed(inputfile$V1, "#SID", max_count = 1)) == FALSE) {
+  if (any(stringi::stri_detect_fixed(inputfile$X1, "#SID", max_count = 1)) == FALSE) {
     stop("The input file provided does not contain sequence IDs")
   }
   
   covariateTidy <- inputfile %>%
-    dplyr::mutate(rowId = stringr::str_replace_all(V1, ".*SID: ", ""), 
-                  Sequences = stringr::str_replace_all(V1, ".#.*", "")) %>%
+    dplyr::mutate(rowId = gsub(x = X1, pattern = ".*SID: ", replacement = ""), 
+                  Sequences = gsub(x = X1, pattern =".#.*", replacement = "")) %>%
     dplyr::select(Sequences, rowId) %>%
     tidyr::separate_rows(rowId, sep = " ") %>%
     dplyr::mutate(covariateValue = 1) %>%
@@ -42,8 +42,8 @@ toCovariateData <- function(inputFile, objectWithIds){
   covariateTidy$rowId <- as.numeric(covariateTidy$rowId)
   
   # Fixing names of sequences
-  covariateTidy$Sequences <- stringr::str_replace_all(covariateTidy$Sequences, "-1", "=>")
-  covariateTidy$Sequences <- stringr::str_replace_all(covariateTidy$Sequences, "=>$", "")
+  covariateTidy$Sequences <- gsub(x = covariateTidy$Sequences, pattern = "-1", replacement = "=>")
+  covariateTidy$Sequences <- gsub(x = covariateTidy$Sequences,pattern = "=>$", replacement = "")
   
   # Constructing unique covariate Ids
   uniqueSeqs <- unique(covariateTidy$Sequences)
@@ -82,6 +82,9 @@ toCovariateData <- function(inputFile, objectWithIds){
   # include true row ids
   covariateDataFp <- dplyr::left_join(x = covariateDataFp, y= trueIdDf, by = c("rowId" = "SPMFrowId"))
   
+  # adding 1 to match R's enum
+  covariateDataFp$rowId <- covariateDataFp$rowId + 1 
+  
   # Constructing covariateData's object $covariates
   covariates <- covariateDataFp %>%
     dplyr::select(rowId, covariateId, covariateValue) #%>%
@@ -103,11 +106,14 @@ toCovariateData <- function(inputFile, objectWithIds){
                             stringsAsFactors = TRUE)
   
   metadata <- list()
+  metadata$populationSize <- length(unique(covariates$rowId))
+  metadata$cohortId <- -1
   result <- Andromeda::andromeda(covariates = covariates, 
                                  covariateRef = covariateRef, 
                                  analysisRef = analysisRef)
-  attr(result, "metadata") <- metadata
+  attr(result, "metaData") <- metadata
   class(result) <- "CovariateData"
+  attr(class(result), "package") <- "FeatureExtraction"
   return(result)
 }
 
@@ -149,3 +155,16 @@ hasData <- function(data) {
   return(!is.null(data) && (data %>% count() %>% pull()) > 0)
 }
 
+getTextFile <- function(fpObject, fileName){
+  fpObject %>%
+    dplyr::mutate(new_seq = stringr::str_replace_all(Seqs, pattern = "_", replacement = " "), 
+                  new_seq = stringr::str_replace_all(Seqs, pattern = "=>", replacement = " -1 "), 
+                  new_seq = paste(new_seq, "-1", sep = " ")) %>%
+    dplyr::group_by(new_seq) %>%
+    dplyr::mutate(new_ids = paste0(new_row_Ids, collapse = " "), 
+                  output = paste(new_seq, "#SUP:", new_Count, "#SID:", new_ids, sep = " ")) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(output) %>%
+    dplyr::distinct() %>%
+    readr::write_table(file = paste0(fileName))
+}

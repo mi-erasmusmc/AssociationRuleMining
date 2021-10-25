@@ -1,5 +1,7 @@
 # AssocationRuleMining
 
+
+
 ## Introduction
 
 An R package under development, for mining and analysing association rules and frequent patterns using data in the OMOP Common Data Model format. 
@@ -26,7 +28,7 @@ Requires R (version 3.4.0 and above) and Java.
 For examples of the complete workflow using the Eunomia package, have a look at   
   
 - [An example to extract association rules](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/examples/AR_example_workflow_Eunomia.Rmd)  
-- [An example to extract frequent patterns](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/examples/FP_example_workflow_Eunomia.Rmd).  
+us- [An example to extract frequent patterns](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/examples/FP_example_workflow_Eunomia.Rmd).  
 
 ## User Documentation
 
