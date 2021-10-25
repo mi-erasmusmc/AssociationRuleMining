@@ -1,26 +1,44 @@
 getOutputFromFrequentPatterns <- function(inputFile, numberOfSequenceIDs, showID) {
-  inputfile = read.delim(inputFile, header = FALSE)
+  inputfile = vroom::vroom(file = inputFile, col_names = FALSE, col_types = "c", trim_ws = TRUE, progress = TRUE, delim = "///")
   
-  if (showID == FALSE){
-    x <- inputfile %>%
-      dplyr::mutate(Count = stringr::str_replace_all(V1, ".*: ", ""),
-                    Sequence = stringr::str_replace_all(V1, ".#.*", ""), 
-                    Support = as.numeric(Count)/numberOfSequenceIDs)
-    
-    x$Sequence <- stringr::str_replace_all(x$Sequence, " -1", " =>") 
-    x$Sequence <- stringr::str_replace_all(x$Sequence, "_", " ") 
-    x$Sequence <- stringr::str_replace_all(x$Sequence, "=>$", "")
+  # Condition when agorithm extracted Rules
+  if (any(stringi::stri_detect_fixed(inputfile$X1, "#CONF", max_count = 1) == TRUE) == TRUE) {
+    confidenceIncluded <- TRUE
   } else {
+    confidenceIncluded <- FALSE
+  } 
+  
+  if (showID == FALSE && confidenceIncluded == FALSE){
     x <- inputfile %>%
-      dplyr::mutate(Count = stringr::str_match(inputfile$V1, "#SUP: \\s*(.*?)\\s*#SID:")[,2],
-                    Sequence = stringr::str_replace_all(V1, ".#.*", ""), 
-                    Support = as.numeric(Count)/numberOfSequenceIDs)
+      dplyr::mutate(Count = gsub(x = X1, pattern = ".*: ", replacement = ""),
+                    Sequence = gsub(x = X1, pattern = ".#.*", replacement = ""), 
+                    Support = as.numeric(Count)/numberOfSequenceIDs) %>%
+      dplyr::select(Sequence, Count, Support)
     
-    x$Sequence <- stringr::str_replace_all(x$Sequence, " -1", " =>") 
-    x$Sequence <- stringr::str_replace_all(x$Sequence, "_", " ") 
-    x$Sequence <- stringr::str_replace_all(x$Sequence, "=>$", "")
+    x$Sequence <- gsub(x = x$Sequence, pattern = " -1", replacement = " =>") 
+    x$Sequence <- gsub(x = x$Sequence, pattern = "_", replacement = " ") 
+    x$Sequence <- gsub(x = x$Sequence, pattern = "=>$", replacement = "")
+    
+  } else if (showID == TRUE && confidenceIncluded == FALSE) {
+    x <- inputfile %>%
+      dplyr::mutate(Count = stringr::str_match(inputfile$X1, "#SUP: \\s*(.*?)\\s*#SID:")[,2],
+                    Sequence = gsub(x = X1, pattern = ".#.*", replacement = ""), 
+                    Support = as.numeric(Count)/numberOfSequenceIDs) %>%
+      dplyr::select(Sequence, Count, Support)
+    
+    x$Sequence <- gsub(x = x$Sequence, pattern = " -1", replacement = " =>") 
+    x$Sequence <- gsub(x = x$Sequence, pattern = "_", replacement = " ") 
+    x$Sequence <- gsub(x = x$Sequence, pattern = "=>$", replacement = "")
+    
+  } else if (confidenceIncluded == TRUE) {
+    x <- inputfile %>%
+      dplyr::mutate(Count = stringr::str_match(X1, "#SUP: \\s*(.*?)\\s*#CONF:")[,2],
+                    Sequence = gsub(x = X1, pattern = ".#.*", replacement = ""), 
+                    Support = as.numeric(Count)/numberOfSequenceIDs,
+                    Confidence = round(as.numeric(gsub(x = X1, pattern = ".*CONF: ", replacement = "")), digits = 7)) %>%
+      dplyr::select(Sequence, Count, Support, Confidence)
   }
   
-  x <- dplyr::select(x, c(Sequence, Count, Support))
+  #x <- dplyr::select(x, c(Sequence, Count, everything()))
   return(x)
 }

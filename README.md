@@ -1,25 +1,34 @@
 # AssocationRuleMining
 
+
+
 ## Introduction
 
-An R package under development, for mining and analysing association rules and frequent patterns in the Common Data Model. 
+An R package under development, for mining and analysing association rules and frequent patterns using data in the OMOP Common Data Model format. 
 
 ## Features
 
-- Functionality to take a cohort as an input.
-- Functionality to take the whole database as an input.
+- Implements association rule mining algorithms.
+- Implements frequent pattern mining algorithms.
 
 ## Technology
 
-AssociationRuleMining is implemented in R using packages arules and arulesSequences, which in turn accommodate functions implemented in C++. The SPMF Java library has been integrated that offers a vaster range of analysis options. More to come soon..
+AssociationRuleMining is implemented in R, making use of SPMF, an open source data mining library written in Java. More to come soon...
 
 ## System Requirements
 
 Requires R (version 3.4.0 and above) and Java.
 
-## Getting Started
+## Getting Started  
+  
+- Advanced users are encouraged to have a look at [An introduction for the advanced user](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/doc/AdvancedUsers.pdf), for a quick overview and how to use the package.  
 
-- Please read [An example to extract frequent patterns](https://github.com/mi-erasmusmc/AssociationRuleMining/examples/ExampleWorkflow.pdf).
+- In the directory [/extras](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/extras) there are available .R and .Rmd files ready to be executed against any OMOP-CDM database, once the necessary fields are filled in. 
+  
+For examples of the complete workflow using the Eunomia package, have a look at   
+  
+- [An example to extract association rules](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/examples/AR_example_workflow_Eunomia.Rmd)  
+us- [An example to extract frequent patterns](https://github.com/mi-erasmusmc/AssociationRuleMining/blob/master/examples/FP_example_workflow_Eunomia.Rmd).  
 
 ## User Documentation
 
