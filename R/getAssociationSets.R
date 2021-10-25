@@ -1,7 +1,7 @@
-getAssociationSets <- function(algorithm, inputFile, outputFile, minsup, showID = FALSE) {
+getAssociationSets <- function(algorithm, inputFile, outputFile, minsup, minconf, showID = FALSE) {
   
   spmf.dir <- rJava::.jclassPath()[stringr::str_ends(rJava::.jclassPath(), "spmf.jar")]
-  associationAlgorithms <- c("Apriori", "Eclat", "FP-Growth", "Relim")
+  associationAlgorithms <- c("Apriori", "Eclat", "FP-Growth", "Relim", "AllRules", "NonRedRules")
   `%notin%` <- Negate(`%in%`)
   outputID = paste(tolower(showID))
   #maxLengthvalue = jdx::convertToJava(maxLength, scalars.as.objects = TRUE)
@@ -18,13 +18,21 @@ getAssociationSets <- function(algorithm, inputFile, outputFile, minsup, showID 
     executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, sep = " ") # Removed outputID but should look up for other parameters since some are applicable
   } else {
     if (algorithm == "Eclat") {
-      executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, sep = " ")
+      executable <- paste("java -jar", spmf.dir, "run", algorithm, inputFile, outputFile, minsup, outputID, sep = " ")
     } else {
       if (algorithm == "FP-Growth"){
         executable <- paste("java -jar", spmf.dir, "run", "FPGrowth_itemsets", inputFile, outputFile, minsup, sep = " ")
       } else {
        if (algorithm == "Relim"){
          executable <- paste("java -jar", spmf.dir, "run", "Relim", inputFile, outputFile, minsup, sep = " ")
+       } else{
+         if (algorithm == "AllRules"){
+           executable <- paste("java -jar", spmf.dir, "run", "FPGrowth_association_rules", inputFile, outputFile, minsup, minconf, sep = " ")
+         } else {
+           if (algorithm == "NonRedRules"){
+             executable <- paste("java -jar", spmf.dir, "run", "MNR", inputFile, outputFile, minsup, minconf, sep = " ")
+           }
+         }
        } 
       } 
     }

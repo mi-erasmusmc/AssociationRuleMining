@@ -21,7 +21,9 @@ Imports:
     tidyr,
     stringr,
     stringi,
-    lifecycle
+    vroom,
+    lifecycle, 
+    splitstackshape
 Depends:
     R (>=  3.4.0)
 Suggests: 
