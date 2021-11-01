@@ -19,7 +19,7 @@ getInputFileForFrequentPatterns <- function(covariateDataObject, fileToSave) {
   #  }
   #}
   
-  data <- as.data.frame(covariateDataObject$covariates)
+  data <- dplyr::as_tibble(covariateDataObject$covariates)
   
   message("Extracting temporal data...")
   temporalData <- getTemporalInputFromFeatExtract(data)
