@@ -1,3 +1,15 @@
+#' Prepare input data for JAVA algorithms
+#'
+#'\code{getInputFileForFrequentPatterns} returns a tibble with input data in long format and a .txt file at the directory specified.
+#'
+#' The function takes a covariateData object as returned by the `FeatureExtraction` package and a location or name of file (should be .txt file) to save the input data.
+#' 
+#' @param covariateDataObject A covariateData object with temporal information as returned by `FeatureExtraction`. 
+#' @param fileToSave Location and name of file to save the input data. Should be a .txt file.
+#' 
+#' @return A tibble and a .txt file at the location specified.
+#' 
+#' @export
 getInputFileForFrequentPatterns <- function(covariateDataObject, fileToSave) {
   if(fileToSave == ""){
     stop("Must declare a filename")

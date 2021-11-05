@@ -1,3 +1,14 @@
+#' Database summary with parameter description for running Frequent Pattern Mining algorithms
+#' 
+#' \code{getDatabaseSummary} returns descriptive statistics for the input dataset
+#' 
+#' This function gives descriptive statistics for various parameters: number of sequences, length of sequences and size of events in sequences.
+#' 
+#' @param data A tibble or a data.frame object as returned by the `getInputFileForFrequentPatterns()`.
+#' 
+#' @return A list with tibbles.
+#' 
+#' @export
 getDatabaseSummaryForFrequentPatterns <- function(data = data){
   # input data should be the output of getInputFileForFrequentPatterns
   

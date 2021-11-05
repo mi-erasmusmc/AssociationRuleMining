@@ -101,6 +101,16 @@ plot.sankey <- function(data = data, plot = c("Sankey"), inputFile, objectWithId
   return(prep3)
 } 
 
+#' Prepares data to visualise frequent patterns with a sankey diagram with networkD3.
+#' 
+#' \code{prepareSankey} returns a list with nodes and links.
+#' 
+#' @param data A tibble as returned from `runFrequentPatterns()`. It makes more sense to use one of the algorithms that result
+#' in the closed or maximal sets.
+#' @param inputFile The .txt file defined as the `outputFile` from `runFrequentPatterns()`.
+#' @param objectWithIds The tibble returned from `getInputFileFromFrequentPatterns()`.
+#' 
+#' @export
 prepareSankey <- function(data = data, plot = c("Sankey"), inputFile, objectWithIds ){
   prep <- prepareResult(data, plot = "Sankey")
   prep2 <- extractFPs(prep[[1]], prep[[2]]$seq_id)
