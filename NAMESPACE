@@ -3,6 +3,7 @@
 export(getDatabaseSummaryForFrequentPatterns)
 export(getFrequentPatternsData)
 export(getIdDataFrame)
+export(getInputFileForCSpade)
 export(getInputFileForFrequentPatterns)
 export(prepareSankey)
 export(reduceClosedPatterns)

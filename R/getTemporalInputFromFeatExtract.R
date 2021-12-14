@@ -22,6 +22,7 @@ getTemporalInputFromFeatExtract <- function(data){
     dplyr::arrange(desc(timeId)) %>%
     dplyr::mutate(eventId = row_number())%>%
     dplyr::arrange(rowId)%>%
-    dplyr::select(rowId, eventId, SIZE, covariateId)
+    dplyr::select(rowId, eventId, timeId, SIZE, covariateId)
+  
   return(x)
 }
