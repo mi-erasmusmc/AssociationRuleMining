@@ -80,15 +80,22 @@ getInputFileForCSpade <- function(covariateDataObject, fileToSave) {
     #group_by(rowId) %>%
     mutate(cspadeRowId = SPMFrowId + 1) %>%
     distinct()
-    
   
+  unlink(fileToSave)
+    
+  if (is.null(fileToSave)) {
   trans <- as(tidyData[,"covariateLabel2", drop = FALSE], "transactions")
   transactionInfo(trans)$sequenceID <- tidyData$cspadeRowId
   transactionInfo(trans)$eventID <- tidyData$eventId
+  } else {
+    tidyData %>%
+      select(cspadeRowId, eventId, SIZE, covariateLabel2) %>%
+      write.table(., file = paste0(fileToSave), sep = ";", row.names = FALSE, col.names = FALSE, quote = FALSE)
+    }
   
 
   #trans <- trans[order(transactionInfo(trans)$sequenceID), ]
   
   
-  return(trans)
+  return(tidyData)
 }
