@@ -1,3 +1,4 @@
+#' @export
 toCovariateDataCSpade <- function(inputFile, objectWithIds){
   
   exp <- as(inputFile@tidLists, "list")
@@ -91,7 +92,7 @@ toCovariateDataCSpade <- function(inputFile, objectWithIds){
   return(result)
   
 }
-
+#' @export
 toCovariateDataObjectCSpade <- function(fileWithFPs, objectWithIds, covariateDataObject){
   
   t1start <- Sys.time()
@@ -114,7 +115,7 @@ toCovariateDataObjectCSpade <- function(fileWithFPs, objectWithIds, covariateDat
   
   return(covariateData)
 }
-
+#' @export
 addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs, objectWithIds, fileToSave) {
   if (!class(plpDataObject) == "plpData") {
     stop("plpDataObject should be a plpData object!")
@@ -150,5 +151,18 @@ addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs,
   
   return(newPlpDataObject)
   
+}
+
+#' @export
+getInputFileForCSpadeWithClass<- function(studyPopulation, transactions, outputFolder){
+  inputClass <- studyPopulation %>%
+    select(rowId, outcomeCount)%>%
+    left_join(., input, by = "rowId" )
+  
+  input <- inputClass %>% 
+    select(cspadeRowId, eventId, SIZE, outcomeCount, covariateLabel2) %>%
+    write.table(., paste0(outputFolder), sep=";", row.names = FALSE, col.names = FALSE, quote = FALSE)
+  
+  return(input)
 }
 
