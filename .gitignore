@@ -10,3 +10,7 @@ connections
 errorReportSql.txt
 inst/doc
 doc
+Clustering
+FrequentPatternsPlayground
+*.txt
+test*
