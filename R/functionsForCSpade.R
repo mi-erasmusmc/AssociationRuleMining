@@ -157,7 +157,7 @@ addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs,
 getInputFileForCSpadeWithClass<- function(studyPopulation, transactions, outputFolder){
   inputClass <- studyPopulation %>%
     select(rowId, outcomeCount)%>%
-    left_join(., input, by = "rowId" )
+    left_join(., transactions, by = "rowId" )
   
   input <- inputClass %>% 
     select(cspadeRowId, eventId, SIZE, outcomeCount, covariateLabel2) %>%
