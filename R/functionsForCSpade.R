@@ -163,6 +163,6 @@ getInputFileForCSpadeWithClass<- function(studyPopulation, transactions, outputF
     select(cspadeRowId, eventId, SIZE, outcomeCount, covariateLabel2) %>%
     write.table(., paste0(outputFolder), sep=";", row.names = FALSE, col.names = FALSE, quote = FALSE)
   
-  return(input)
+  return(inputClass)
 }
 
