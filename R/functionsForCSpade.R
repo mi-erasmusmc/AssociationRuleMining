@@ -13,6 +13,13 @@ toCovariateDataCSpade <- function(inputFile, objectWithIds){
   # Making rowId numeric
   covariateLong$rowId <- as.numeric(covariateLong$rowId)
   
+  # Fix rowIds
+  trueRowIds <- tibble(sequenceID = as.numeric(inputFile@tidLists@transactionInfo$sequenceID),
+                       rowId = 1:length(inputFile@tidLists@transactionInfo@sequenceID))
+  covariateLong <- covariateLong %>% dplyr::inner_join(trueRowIds, by="rowId") %>%
+    select(c("Sequences", "covariateValue", "sequenceID")) %>% 
+    mutate(rowId = sequenceID) %>% select(!c("sequenceID"))
+  
   # Fixing names of sequences
   
   #### Need to change this for the arulesSequences results
@@ -57,7 +64,7 @@ toCovariateDataCSpade <- function(inputFile, objectWithIds){
   covariateDataFp <- dplyr::left_join(x = covariateDataFp, y= trueIdDf, by = c("rowId" = "cspadeRowId"))
   
   # adding 1 to match R's enum
-  covariateDataFp$rowId <- covariateDataFp$rowId + 1 
+  # covariateDataFp$rowId <- covariateDataFp$rowId + 1 
   
   # Constructing covariateData's object $covariates
   covariates <- covariateDataFp %>%
