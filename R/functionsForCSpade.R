@@ -15,7 +15,7 @@ toCovariateDataCSpade <- function(inputFile, objectWithIds){
   
   # Fix rowIds
   trueRowIds <- tibble(sequenceID = as.numeric(inputFile@tidLists@transactionInfo$sequenceID),
-                       rowId = 1:length(inputFile@tidLists@transactionInfo@sequenceID))
+                       rowId = 1:length(inputFile@tidLists@transactionInfo$sequenceID))
   covariateLong <- covariateLong %>% dplyr::inner_join(trueRowIds, by="rowId") %>%
     select(c("Sequences", "covariateValue", "sequenceID")) %>% 
     mutate(rowId = sequenceID) %>% select(!c("sequenceID"))
