@@ -1,3 +1,4 @@
+#' @export
 createAssociationRulesCovariateSettings <- function(useFrequentPatterns = TRUE, 
                                                     algorithm,
                                                     inputFile, 

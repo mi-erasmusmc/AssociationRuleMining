@@ -1,3 +1,4 @@
+#' @export
 getInputFileForAssociationRules <- function(covariateDataObject, fileToSave){
   
   if(fileToSave == ""){

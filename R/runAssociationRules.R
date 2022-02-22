@@ -1,3 +1,4 @@
+#' @export
 runAssociationRules <- function(algorithm, inputFile, outputFile, minsup, minconf, showID = FALSE) {
   
   datafile <- read.delim(paste(inputFile), header = FALSE, blank.lines.skip = TRUE, comment.char = "@")

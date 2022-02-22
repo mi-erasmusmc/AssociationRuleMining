@@ -79,7 +79,8 @@ getInputFileForCSpade <- function(covariateDataObject, fileToSave) {
     ungroup() %>%
     #group_by(rowId) %>%
     mutate(cspadeRowId = SPMFrowId + 1) %>%
-    distinct()
+    distinct() %>% 
+    mutate_at(vars(cspadeRowId, eventId, SIZE), as.integer)
   
   unlink(fileToSave)
     
