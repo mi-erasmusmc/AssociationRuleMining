@@ -1,3 +1,11 @@
+#' Get a dataframe indicating which patterns are observed in each patient
+#' 
+#' \code{getIdDataFrame} returns a data frame with patients as rows and frequent patterns as columns.
+#' 
+#' @param inputFile The .txt file returned from `runFrequentPatterns()`.
+#' @param objectWithIds The tibble returned from `getInputFileFromFrequentPatterns()`.
+#' 
+#' @export
 getIdDataFrame <- function(inputFile, objectWithIds){
   
   #inputs to this function are: 1) inputfile: the results of the FP mining algorithms

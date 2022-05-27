@@ -1,3 +1,12 @@
+#' Reducing length of Frequent Patterns
+#' 
+#' \code{reduceClosedPatterns} Removes repetitive concepts from Frequent Patterns.
+#' 
+#' It takes as input the tibble resulted from `runFrequentPatterns()` and removes repetitive concepts from the extracted patterns
+#' 
+#' @param data A tibble as returned from `runFrequentPatterns()`.
+#' 
+#' @export
 # reduceClosedPatterns <- function(data){
 #   res1 <- data %>%
 #     dplyr::mutate(Seqs = stringr::str_replace_all(Sequence, pattern = " ", replacement = "")) %>%
