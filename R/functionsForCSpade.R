@@ -1,5 +1,7 @@
 #' @export
-toCovariateDataCSpade <- function(inputFile, objectWithIds){
+toCovariateDataCSpade <- function(inputFile, 
+                                  objectWithIds, 
+                                  transactionsRowId){
   
   exp <- as(inputFile@tidLists, "list")
   FrameData <- lapply(exp, function(x) as.data.frame(x))
@@ -22,7 +24,10 @@ toCovariateDataCSpade <- function(inputFile, objectWithIds){
   #   mutate(rowId = sequenceID) %>% select(!c("sequenceID"))
   # 
   
-  trueRowIds <- tibble(sequenceID = as.numeric(inputFile@tidLists@transactionInfo$sequenceID),
+  # trueRowIds <- tibble(sequenceID = as.numeric(inputFile@tidLists@transactionInfo$sequenceID),
+  #                      rowId = as.numeric(unique(objectWithIds$rowId)))
+  
+  trueRowIds <- tibble(sequenceID = as.numeric(transactionsRowId),
                        rowId = as.numeric(unique(objectWithIds$rowId)))
   covariateLong <- covariateLong %>% dplyr::inner_join(trueRowIds, by="sequenceID") %>%
     select(c("Sequences", "covariateValue", "rowId"))
@@ -106,12 +111,17 @@ toCovariateDataCSpade <- function(inputFile, objectWithIds){
   
 }
 #' @export
-toCovariateDataObjectCSpade <- function(fileWithFPs, objectWithIds, covariateDataObject){
+toCovariateDataObjectCSpade <- function(fileWithFPs, 
+                                        objectWithIds, 
+                                        covariateDataObject, 
+                                        transactionsRowId){
   
   t1start <- Sys.time()
   
   message("Writing frequent patterns as covariates...")
-  fpdata <- toCovariateDataCSpade(fileWithFPs, objectWithIds)
+  fpdata <- toCovariateDataCSpade(inputFile = fileWithFPs, 
+                                  objectWithIds = objectWithIds, 
+                                  transactionsRowId = transactionsRowId)
   
   t1duration <- Sys.time() - t1start
   
@@ -129,7 +139,7 @@ toCovariateDataObjectCSpade <- function(fileWithFPs, objectWithIds, covariateDat
   return(covariateData)
 }
 #' @export
-addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs, objectWithIds, fileToSave) {
+addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs, transactionsRowId, objectWithIds, fileToSave) {
   if (!class(plpDataObject) == "plpData") {
     stop("plpDataObject should be a plpData object!")
   }
@@ -140,7 +150,10 @@ addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs,
   covariateData <- Andromeda::copyAndromeda(oldPlpDataObject$covariateData)
   
   #Step 2: add in there the FPs as covariates
-  covariateData <- toCovariateDataObjectCSpade(fileWithFPs = fileWithFPs, objectWithIds = objectWithIds, covariateDataObject = covariateData) 
+  covariateData <- toCovariateDataObjectCSpade(fileWithFPs = fileWithFPs, 
+                                               objectWithIds = objectWithIds,
+                                               transactionsRowId = transactionsRowId,
+                                               covariateDataObject = covariateData) 
   
   #Step3: copy the old plpData[covariateData] attribute called "metadata"
   metaData <- attr(oldPlpDataObject$covariateData, "metaData")

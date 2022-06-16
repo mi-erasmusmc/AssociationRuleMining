@@ -86,7 +86,13 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
       s0 <- subset(s0, size(x) > 1)
     }
     
-    cov <- AssociationRuleMining::addFrequentPatternsToAndromedaFromCSpade(plpDataObject = trainData, fileWithFPs = s0, objectWithIds = inputData, fileToSave = file.path(getwd(), outputFolder, fileName))
+    transactionsRowId <- unique(transactionInfo(transactions)$sequenceID)
+    
+    cov <- AssociationRuleMining::addFrequentPatternsToAndromedaFromCSpade(plpDataObject = trainData, 
+                                                                           fileWithFPs = s0,
+                                                                           objectWithIds = inputData, 
+                                                                           transactionsRowId = transactionsRowId,
+                                                                           fileToSave = file.path(getwd(), outputFolder, fileName))
     #browser()
     
     covariateIdsInclude <- list(trainPatterns = s0, 
@@ -96,7 +102,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     # Which of the FPs to extract
     # covariateDataTest <- data$Test$covariateData
     
-    testDataRowId <- data$Test$labels$rowId
+    testDataRowId <- trainData$labels$rowId
     sequencePlpData <- PatientLevelPrediction::getPlpData(
       databaseDetails = databaseDetails,
       covariateSettings = covariateSettingsSequence,
@@ -112,14 +118,21 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     #browser()
     transactions <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, "test.txt")), sep = ";", info = c("sequenceID","eventID","SIZE"))
     
+    transactionsRowId <- unique(transactionInfo(transactions)$sequenceID)
     # sTest <- arulesSequences::cspade(data = transactions, parameter = list(support = minimumSupport, maxlen = patternLength, maxsize = itemSize), control = list(verbose = TRUE, tidLists = TRUE))
     # Extracting matching transactions
     patternsTrain <- covariateIdsInclude$trainPatterns
     patternsTest <- arules::supportingTransactions(patternsTrain, transactions = transactions)
     trainCovariateRef <- covariateIdsInclude$trainCovariateRef
     
+    transactionsRowId <- transactionInfo(transactions)$sequenceID
 # Not sure abot the flag for the plpDataObject in the next line
-    cov <- addTestSetPatternsToAndromedaFromCSpade(plpDataObject = trainData, fileWithFPs = patternsTest, objectWithIds = inputDataTest, plpDataTrain = trainCovariateRef, fileToSave = file.path(getwd(), outputFolder, fileName))
+    cov <- addTestSetPatternsToAndromedaFromCSpade(plpDataObject = trainData, 
+                                                   fileWithFPs = patternsTest, 
+                                                   objectWithIds = inputDataTest,
+                                                   plpDataTrain = trainCovariateRef,
+                                                   transactionsRowId = transactionsRowId,
+                                                   fileToSave = file.path(getwd(), outputFolder, fileName))
     
     covariateIdsInclude <- list(trainPatterns = patternsTrain, 
                                 trainCovariateRef = trainCovariateRef, 
