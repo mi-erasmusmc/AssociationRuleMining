@@ -4,10 +4,12 @@ testSetToCovariateDataCSpade <- function(inputFile, objectWithIds, plpDataTrain)
   exp <- as(inputFile, "list")
   FrameData <- lapply(exp, function(x) as.data.frame(x))
   
+  suppressMessages({
   covariateLong <- reshape2::melt(FrameData, value.name = "sequenceID") %>%
     select(L1, sequenceID) %>%
     rename(Sequences = L1) %>%
     mutate(covariateValue = 1)
+  })
   
   
   # Making rowId numeric
@@ -17,14 +19,14 @@ testSetToCovariateDataCSpade <- function(inputFile, objectWithIds, plpDataTrain)
   trueRowIds <- tibble(sequenceID = as.numeric(inputFile@transactionInfo$sequenceID),
                        rowId = as.numeric(unique(objectWithIds$rowId)))
   covariateLong <- covariateLong %>% dplyr::inner_join(trueRowIds, by="sequenceID") %>%
-    select(c("Sequences", "covariateValue", "rowId")) 
+    select(c("Sequences", "covariateValue", "rowId"))
   
   # Fixing names of sequences
   
   # Getting unique covariateIds same as Train
   uniqueSeqs <- unique(covariateLong$Sequences)
   uniqueCovariates <- data.frame(covariateName = uniqueSeqs) 
-  trainCovariateIds <- plpDataTrain$covariateRef %>% filter(analysisId == 999) %>% collect()
+  trainCovariateIds <- plpDataTrain %>% filter(analysisId == 999) %>% collect()
   uniqueCovariateIds <- trainCovariateIds %>% inner_join(uniqueCovariates, by = "covariateName")
 
   
@@ -101,7 +103,6 @@ addTestSetPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs, 
   covariateData <- Andromeda::copyAndromeda(oldPlpDataObject$covariateData)
   
   #Step 2: add in there the FPs as covariates
-  covariateData <- toCovariateDataObjectCSpade(fileWithFPs = fileWithFPs, objectWithIds = objectWithIds, covariateDataObject = covariateData) 
   covariateData <- testSetToCovariateDataObjectCSpade (fileWithFPs = fileWithFPs, objectWithIds = objectWithIds, covariateDataObject = covariateData, plpDataTrain = plpDataTrain) 
   
   #Step3: copy the old plpData[covariateData] attribute called "metadata"
