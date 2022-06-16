@@ -86,7 +86,7 @@ getInputFileForCSpade <- function(covariateDataObject, fileToSave) {
     
   if (is.null(fileToSave)) {
   trans <- as(tidyData[,"covariateLabel2", drop = FALSE], "transactions")
-  transactionInfo(trans)$sequenceID <- tidyData$cspadeRowId
+  transactionInfo(trans)$sequenceID <- as.numeric(tidyData$cspadeRowId)
   transactionInfo(trans)$eventID <- tidyData$eventId
   } else {
     tidyData %>%
