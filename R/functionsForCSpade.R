@@ -4,22 +4,28 @@ toCovariateDataCSpade <- function(inputFile, objectWithIds){
   exp <- as(inputFile@tidLists, "list")
   FrameData <- lapply(exp, function(x) as.data.frame(x))
   
-  covariateLong <- reshape2::melt(FrameData, value.name = "rowId") %>%
-    select(L1, rowId) %>%
+  suppressMessages({
+  covariateLong <- reshape2::melt(FrameData, value.name = "sequenceID") %>%
+    select(L1, sequenceID) %>%
     rename(Sequences = L1) %>%
     mutate(covariateValue = 1)
-  
+  })
   
   # Making rowId numeric
-  covariateLong$rowId <- as.numeric(covariateLong$rowId)
+  covariateLong$sequenceID <- as.numeric(covariateLong$sequenceID)
   
   # Fix rowIds
-  trueRowIds <- tibble(sequenceID = as.numeric(inputFile@tidLists@transactionInfo$sequenceID),
-                       rowId = 1:length(inputFile@tidLists@transactionInfo$sequenceID))
-  covariateLong <- covariateLong %>% dplyr::inner_join(trueRowIds, by="rowId") %>%
-    select(c("Sequences", "covariateValue", "sequenceID")) %>% 
-    mutate(rowId = sequenceID) %>% select(!c("sequenceID"))
+  # trueRowIds <- tibble(sequenceID = as.numeric(inputFile@tidLists@transactionInfo$sequenceID),
+  #                      rowId = 1:length(inputFile@tidLists@transactionInfo$sequenceID))
+  # covariateLong <- covariateLong %>% dplyr::inner_join(trueRowIds, by="rowId") %>%
+  #   select(c("Sequences", "covariateValue", "sequenceID")) %>% 
+  #   mutate(rowId = sequenceID) %>% select(!c("sequenceID"))
+  # 
   
+  trueRowIds <- tibble(sequenceID = as.numeric(inputFile@tidLists@transactionInfo$sequenceID),
+                       rowId = as.numeric(unique(objectWithIds$rowId)))
+  covariateLong <- covariateLong %>% dplyr::inner_join(trueRowIds, by="sequenceID") %>%
+    select(c("Sequences", "covariateValue", "rowId"))
   # Fixing names of sequences
   
   #### Need to change this for the arulesSequences results
@@ -41,11 +47,11 @@ toCovariateDataCSpade <- function(inputFile, objectWithIds){
   #  dplyr::mutate(row_no = dplyr::row_number(), 
   #                java_row_id = row_no - 1)
   
-  trueRowIds <- objectWithIds %>%
-    select("rowId", "cspadeRowId") 
-  
-  trueIdDf <- data.frame("rowId" = unique(trueRowIds$rowId),
-                         "cspadeRowId" = unique(trueRowIds$cspadeRowId))
+  # trueRowIds <- objectWithIds %>%
+  #   select("rowId", "cspadeRowId") 
+  # 
+  # trueIdDf <- data.frame("rowId" = unique(trueRowIds$rowId),
+  #                        "cspadeRowId" = unique(trueRowIds$cspadeRowId))
   
   
   
@@ -61,7 +67,7 @@ toCovariateDataCSpade <- function(inputFile, objectWithIds){
   covariateDataFp <- dplyr::left_join(x = covariateLong, y = uniqueCovariateIds, by = c("Sequences" = "covariateName"))
   
   # include true row ids
-  covariateDataFp <- dplyr::left_join(x = covariateDataFp, y= trueIdDf, by = c("rowId" = "cspadeRowId"))
+  # covariateDataFp <- dplyr::left_join(x = covariateDataFp, y= trueIdDf, by = c("rowId" = "cspadeRowId"))
   
   # adding 1 to match R's enum
   # covariateDataFp$rowId <- covariateDataFp$rowId + 1 
