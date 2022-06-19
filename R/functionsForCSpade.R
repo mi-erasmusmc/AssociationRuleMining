@@ -8,9 +8,9 @@ toCovariateDataCSpade <- function(inputFile,
   
   suppressMessages({
   covariateLong <- reshape2::melt(FrameData, value.name = "sequenceID") %>%
-    select(L1, sequenceID) %>%
-    rename(Sequences = L1) %>%
-    mutate(covariateValue = 1)
+    dplyr::select(L1, sequenceID) %>%
+    dplyr::rename(Sequences = L1) %>%
+    dplyr::mutate(covariateValue = 1)
   })
   
   # Making rowId numeric

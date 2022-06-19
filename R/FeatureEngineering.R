@@ -3,13 +3,13 @@ createFrequentPatternMiningSettings <- function(minimumSupport,
                                                 maximumPatternLength,
                                                 maximumItemSize, 
                                                 removeLengthOnePatterns = FALSE, 
-                                                featureExtractionSettings){
+                                                temporalPlpData){
   
   miningFPsSettings <- list(support = minimumSupport, 
                             maxlen = maximumPatternLength, 
                             maxsize = maximumItemSize, 
                             removeLengthOnePatterns = removeLengthOnePatterns,
-                            featureExtractionSettings = featureExtractionSettings 
+                            temporalPlpData = temporalPlpData 
   )
   
   class(miningFPsSettings) <- "frequentPatternMiningSettings"
@@ -24,7 +24,7 @@ extractFrequentPatternsSettings <- function(frequentPatternMiningSettings, plpDa
     support = frequentPatternMiningSettings$support,
     maxlen =frequentPatternMiningSettings$maxlen,
     maxsize = frequentPatternMiningSettings$maxsize,
-    temporalSequenceFeatureExtractionSettings = frequentPatternMiningSettings$featureExtractionSettings,
+    temporalPlpData = frequentPatternMiningSettings$temporalPlpData,
     removeLengthOnePatterns = frequentPatternMiningSettings$removeLengthOnePatterns,
     plpDataSettings = plpDataSettings,
     outputFolder = outputFolder, 
@@ -49,9 +49,10 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
   outputFolder = featureEngineeringSettings$outputFolder
   fileName = featureEngineeringSettings$fileName
   removeLengthOnePatterns = featureEngineeringSettings$removeLengthOnePatterns
+  temporalPlpData = featureEngineeringSettings$temporalPlpData
   
   # featureExtraction settings
-  covariateSettingsSequence <- featureEngineeringSettings$temporalSequenceFeatureExtractionSettings
+  #covariateSettingsSequence <- featureEngineeringSettings$temporalSequenceFeatureExtractionSettings
   databaseDetails <- featureEngineeringSettings$plpDataSettings$databaseDetails
   restrictPlpDataSettings <- featureEngineeringSettings$plpDataSettings$restrictPlpDataSettings
   dirLocation <- file.path(getwd(), outputFolder)
@@ -64,26 +65,32 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     
     trainDataRowId <- trainData$labels$rowId
     
-    sequencePlpData <- PatientLevelPrediction::getPlpData(
-      databaseDetails = databaseDetails,
-      covariateSettings = covariateSettingsSequence,
-      restrictPlpDataSettings = restrictPlpDataSettings
-    )
+    # sequencePlpData <- PatientLevelPrediction::getPlpData(
+    #   databaseDetails = databaseDetails,
+    #   covariateSettings = covariateSettingsSequence,
+    #   restrictPlpDataSettings = restrictPlpDataSettings
+    # )
     
-    covariateData <- sequencePlpData$covariateData
+    covariateData <- Andromeda::copyAndromeda(temporalPlpData$covariateData)
     
     covariateData$covariates <- covariateData$covariates %>%
       filter(rowId %in% trainDataRowId)
     
     
-    inputData <- AssociationRuleMining::getInputFileForCSpade(covariateDataObject = covariateData, fileToSave = file.path(dirLocation, paste0(fileName, ".txt")))
-    #browser()
-    transactions <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, ".txt")), sep = ";", info = c("sequenceID","eventID","SIZE"))
+    inputData <- AssociationRuleMining::getInputFileForCSpade(covariateDataObject = covariateData, 
+                                                              fileToSave = file.path(dirLocation, paste0(fileName, ".txt")))
     
-    s0 <- arulesSequences::cspade(data = transactions, parameter = list(support = minimumSupport, maxlen = patternLength, maxsize = itemSize), control = list(verbose = TRUE, tidLists = TRUE))
+    transactions <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, ".txt")), sep = ";", 
+                                                  info = c("sequenceID","eventID","SIZE"))
+    
+    s0 <- arulesSequences::cspade(data = transactions, 
+                                  parameter = list(support = minimumSupport, 
+                                                                        maxlen = patternLength, 
+                                                                        maxsize = itemSize), 
+                                  control = list(verbose = TRUE, tidLists = TRUE))
     
     if (removeLengthOnePatterns){
-      s0 <- subset(s0, size(x) > 1)
+      s0 <- arulesSequences::subset(s0, size(x) > 1)
     }
     
     transactionsRowId <- unique(transactionInfo(transactions)$sequenceID)
@@ -93,8 +100,8 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
                                                                            objectWithIds = inputData, 
                                                                            transactionsRowId = transactionsRowId,
                                                                            fileToSave = file.path(getwd(), outputFolder, fileName))
-    #browser()
     
+    #drop(covariateData)
     covariateIdsInclude <- list(trainPatterns = s0, 
                                 trainCovariateRef = cov$covariateData$covariateRef)
   } else {
@@ -103,13 +110,13 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     # covariateDataTest <- data$Test$covariateData
     
     testDataRowId <- trainData$labels$rowId
-    sequencePlpData <- PatientLevelPrediction::getPlpData(
-      databaseDetails = databaseDetails,
-      covariateSettings = covariateSettingsSequence,
-      restrictPlpDataSettings = restrictPlpDataSettings
-    )
+    # sequencePlpData <- PatientLevelPrediction::getPlpData(
+    #   databaseDetails = databaseDetails,
+    #   covariateSettings = covariateSettingsSequence,
+    #   restrictPlpDataSettings = restrictPlpDataSettings
+    # )
     
-    covariateDataTest <- sequencePlpData$covariateData
+    covariateDataTest <- Andromeda::copyAndromeda(temporalPlpData$covariateData)
     
     covariateDataTest$covariates <- covariateDataTest$covariates %>%
       filter(rowId %in% testDataRowId)
@@ -126,7 +133,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     trainCovariateRef <- covariateIdsInclude$trainCovariateRef
     
     transactionsRowId <- transactionInfo(transactions)$sequenceID
-# Not sure abot the flag for the plpDataObject in the next line
+
     cov <- addTestSetPatternsToAndromedaFromCSpade(plpDataObject = trainData, 
                                                    fileWithFPs = patternsTest, 
                                                    objectWithIds = inputDataTest,
@@ -134,6 +141,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
                                                    transactionsRowId = transactionsRowId,
                                                    fileToSave = file.path(getwd(), outputFolder, fileName))
     
+    #drop(covariateData)
     covariateIdsInclude <- list(trainPatterns = patternsTrain, 
                                 trainCovariateRef = trainCovariateRef, 
                                 testPatterns = patternsTest, 
