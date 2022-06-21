@@ -55,7 +55,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
   #covariateSettingsSequence <- featureEngineeringSettings$temporalSequenceFeatureExtractionSettings
   databaseDetails <- featureEngineeringSettings$plpDataSettings$databaseDetails
   restrictPlpDataSettings <- featureEngineeringSettings$plpDataSettings$restrictPlpDataSettings
-  dirLocation <- file.path(getwd(), outputFolder)
+  dirLocation <- file.path(outputFolder)
   
   if (!dir.exists(dirLocation)){
     dir.create(dirLocation)
@@ -99,7 +99,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
                                                                            fileWithFPs = s0,
                                                                            objectWithIds = inputData, 
                                                                            transactionsRowId = transactionsRowId,
-                                                                           fileToSave = file.path(getwd(), outputFolder, fileName))
+                                                                           fileToSave = file.path(dirLocation, fileName))
     
     #drop(covariateData)
     covariateIdsInclude <- list(trainPatterns = s0, 
@@ -121,9 +121,9 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     covariateDataTest$covariates <- covariateDataTest$covariates %>%
       filter(rowId %in% testDataRowId)
     
-    inputDataTest <- AssociationRuleMining::getInputFileForCSpade(covariateDataObject = covariateDataTest, fileToSave = file.path(dirLocation, paste0(fileName, "test.txt")))
+    inputDataTest <- AssociationRuleMining::getInputFileForCSpade(covariateDataObject = covariateDataTest, fileToSave = file.path(dirLocation, paste0(fileName, "testSet.txt")))
     #browser()
-    transactions <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, "test.txt")), sep = ";", info = c("sequenceID","eventID","SIZE"))
+    transactions <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, "testSet.txt")), sep = ";", info = c("sequenceID","eventID","SIZE"))
     
     transactionsRowId <- unique(transactionInfo(transactions)$sequenceID)
     # sTest <- arulesSequences::cspade(data = transactions, parameter = list(support = minimumSupport, maxlen = patternLength, maxsize = itemSize), control = list(verbose = TRUE, tidLists = TRUE))
@@ -139,7 +139,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
                                                    objectWithIds = inputDataTest,
                                                    plpDataTrain = trainCovariateRef,
                                                    transactionsRowId = transactionsRowId,
-                                                   fileToSave = file.path(getwd(), outputFolder, fileName))
+                                                   fileToSave = file.path(dirLocation, fileName))
     
     #drop(covariateData)
     covariateIdsInclude <- list(trainPatterns = patternsTrain, 
