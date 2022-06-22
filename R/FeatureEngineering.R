@@ -89,10 +89,19 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
                                                                         maxsize = itemSize), 
                                   control = list(verbose = TRUE, tidLists = TRUE))
     
-    if (removeLengthOnePatterns){
+    initialFPs <- as.numeric(dim(s0)[1])
+    message(paste("The set of FPs extracted were", initialFPs, "."))
+    
+    if (removeLengthOnePatterns == TRUE){
       s0 <- arulesSequences::subset(s0, size(x) > 1)
+      remainingFPs <- as.numeric(dim(s0)[1])
+      message(paste("After removing length one FPs there were", remainingFPs, "remaining."))
     }
     
+    if(dim(s0)[1]== 0){
+      cov <- trainData
+      message("FP mining returned 0 FPs therefore returning trainData.")
+    } else {
     transactionsRowId <- unique(transactionInfo(transactions)$sequenceID)
     
     cov <- AssociationRuleMining::addFrequentPatternsToAndromedaFromCSpade(plpDataObject = trainData, 
@@ -100,7 +109,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
                                                                            objectWithIds = inputData, 
                                                                            transactionsRowId = transactionsRowId,
                                                                            fileToSave = file.path(dirLocation, fileName))
-    
+    }
     #drop(covariateData)
     covariateIdsInclude <- list(trainPatterns = s0, 
                                 trainCovariateRef = cov$covariateData$covariateRef)
@@ -133,7 +142,11 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     trainCovariateRef <- covariateIdsInclude$trainCovariateRef
     
     transactionsRowId <- transactionInfo(transactions)$sequenceID
-
+    
+    if(dim(patternsTest)[1]== 0){
+      cov <- trainData
+      message("FP mining on the test set returned 0 FPs, therefore returning testData.")
+    } else {
     cov <- addTestSetPatternsToAndromedaFromCSpade(plpDataObject = trainData, 
                                                    fileWithFPs = patternsTest, 
                                                    objectWithIds = inputDataTest,
@@ -141,7 +154,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
                                                    transactionsRowId = transactionsRowId,
                                                    fileToSave = file.path(dirLocation, fileName))
     
-    #drop(covariateData)
+    }
     covariateIdsInclude <- list(trainPatterns = patternsTrain, 
                                 trainCovariateRef = trainCovariateRef, 
                                 testPatterns = patternsTest, 
