@@ -17,7 +17,7 @@ createFrequentPatternMiningSettings <- function(minimumSupport,
 }
 
 #' @export
-extractFrequentPatternsSettings <- function(frequentPatternMiningSettings, plpDataSettings, outputFolder = getwd(), fileName){
+extractFrequentPatternsSettings <- function(frequentPatternMiningSettings, convertToArrow = FALSE, plpDataSettings, outputFolder = getwd(), fileName){
   #add checks
   
   featureEngineeringSettings <- list(
@@ -26,6 +26,7 @@ extractFrequentPatternsSettings <- function(frequentPatternMiningSettings, plpDa
     maxsize = frequentPatternMiningSettings$maxsize,
     temporalPlpData = frequentPatternMiningSettings$temporalPlpData,
     removeLengthOnePatterns = frequentPatternMiningSettings$removeLengthOnePatterns,
+    convertToArrow = convertToArrow,
     plpDataSettings = plpDataSettings,
     outputFolder = outputFolder, 
     fileName = fileName
@@ -50,6 +51,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
   fileName = featureEngineeringSettings$fileName
   removeLengthOnePatterns = featureEngineeringSettings$removeLengthOnePatterns
   temporalPlpData = featureEngineeringSettings$temporalPlpData
+  convertToArrow = featureEngineeringSettings$convertToArrow
   
   # featureExtraction settings
   #covariateSettingsSequence <- featureEngineeringSettings$temporalSequenceFeatureExtractionSettings
@@ -71,10 +73,15 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     #   restrictPlpDataSettings = restrictPlpDataSettings
     # )
     
-    covariateData <- Andromeda::copyAndromeda(temporalPlpData$covariateData)
+    if (convertToArrow == FALSE){
+      covariateData <- Andromeda::copyAndromeda(temporalPlpData$covariateData)
+    } else {
+      
+      covariateData <- convertCovariateDataToArrow(temporalPlpData$covariateData)
+    }
     
     covariateData$covariates <- covariateData$covariates %>%
-      filter(rowId %in% trainDataRowId)
+      filter(rowId %in% trainDataRowId) %>% createArrow(.data)
     
     
     inputData <- AssociationRuleMining::getInputFileForCSpade(covariateDataObject = covariateData, 
@@ -107,6 +114,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     cov <- AssociationRuleMining::addFrequentPatternsToAndromedaFromCSpade(plpDataObject = trainData, 
                                                                            fileWithFPs = s0,
                                                                            objectWithIds = inputData, 
+                                                                           convertToArrow = convertToArrow,
                                                                            transactionsRowId = transactionsRowId,
                                                                            fileToSave = file.path(dirLocation, fileName))
     }

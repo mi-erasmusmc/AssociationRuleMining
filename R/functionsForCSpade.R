@@ -1,7 +1,8 @@
 #' @export
 toCovariateDataCSpade <- function(inputFile, 
                                   objectWithIds, 
-                                  transactionsRowId){
+                                  transactionsRowId, 
+                                  convertToArrow = FALSE){
   
   exp <- as(inputFile@tidLists, "list")
   FrameData <- lapply(exp, function(x) as.data.frame(x))
@@ -100,9 +101,31 @@ toCovariateDataCSpade <- function(inputFile,
   metadata <- list()
   metadata$populationSize <- length(unique(covariates$rowId))
   metadata$cohortId <- -1
+  
+  if (convertToArrow == FALSE) {
   result <- Andromeda::andromeda(covariates = covariates, 
                                  covariateRef = covariateRef, 
                                  analysisRef = analysisRef)
+  } else {
+    
+    result <- list(covariateRef = covariateRef, 
+                   analysisRef = analysisRef)
+    
+    newPath <- file.path(tempdir(), paste(c('arrowDataset', sample(letters, 8)), collapse = ''))
+    dir.create(newPath)
+    
+    arrow::write_feather(covariates, file.path(path, paste(c('file_', sample(letters, 8)), collapse = '')))
+    
+    tempDataset <- arrow::open_dataset(newPath, format='feather')
+    newPath <- file.path(tempdir(), paste(c('arrowDataset', sample(letters, 8)), collapse = ''))
+    
+    arrow::write_dataset(covariates, path = newPath, format='feather')
+    
+    covariateFeather <- arrow::open_dataset(newPath, format='feather')  
+    
+    result$covariate <- covariateFeather
+  }
+  
   attr(result, "metaData") <- metadata
   class(result) <- "CovariateData"
   attr(class(result), "package") <- "FeatureExtraction"
@@ -114,14 +137,16 @@ toCovariateDataCSpade <- function(inputFile,
 toCovariateDataObjectCSpade <- function(fileWithFPs, 
                                         objectWithIds, 
                                         covariateDataObject, 
-                                        transactionsRowId){
+                                        transactionsRowId, 
+                                        convertToArrow){
   
   t1start <- Sys.time()
   
   message("Writing frequent patterns as covariates...")
   fpdata <- toCovariateDataCSpade(inputFile = fileWithFPs, 
                                   objectWithIds = objectWithIds, 
-                                  transactionsRowId = transactionsRowId)
+                                  transactionsRowId = transactionsRowId, 
+                                  convertToArrow = convertToArrow)
   
   t1duration <- Sys.time() - t1start
   
@@ -139,7 +164,12 @@ toCovariateDataObjectCSpade <- function(fileWithFPs,
   return(covariateData)
 }
 #' @export
-addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs, transactionsRowId, objectWithIds, fileToSave) {
+addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, 
+                                                     fileWithFPs, 
+                                                     transactionsRowId, 
+                                                     objectWithIds,
+                                                     convertToArrow,
+                                                     fileToSave) {
   if (!class(plpDataObject) == "plpData") {
     stop("plpDataObject should be a plpData object!")
   }
@@ -147,13 +177,18 @@ addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs,
   oldPlpDataObject = plpDataObject
   
   # Step one: Copy the already existing covariateData object
-  covariateData <- Andromeda::copyAndromeda(oldPlpDataObject$covariateData)
+  if (convertToArrow == FALSE){
+    covariateData <- Andromeda::copyAndromeda(oldPlpDataObject$covariateData)
+  } else{
+    covariateData <- oldPlpDataObject$covariateData
+  }
   
   #Step 2: add in there the FPs as covariates
   covariateData <- toCovariateDataObjectCSpade(fileWithFPs = fileWithFPs, 
                                                objectWithIds = objectWithIds,
                                                transactionsRowId = transactionsRowId,
-                                               covariateDataObject = covariateData) 
+                                               covariateDataObject = covariateData, 
+                                               convertToArrow = convertToArrow) 
   
   #Step3: copy the old plpData[covariateData] attribute called "metadata"
   metaData <- attr(oldPlpDataObject$covariateData, "metaData")
