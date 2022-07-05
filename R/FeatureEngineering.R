@@ -79,7 +79,8 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     
     covariateData$covariates <- covariateData$covariates %>%
       filter(rowId %in% trainDataRowId)
-    
+    ParallelLogger::logTrace("\nPreparing data for Frequent Pattern mining...")
+    start <- Sys.time()
     if (is.null(transactionsObject) == TRUE){
     inputData <- AssociationRuleMining::getInputFileForCSpade(covariateDataObject = covariateData, 
                                                               fileToSave = file.path(dirLocation, paste0(fileName, ".txt")))
@@ -90,24 +91,28 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
       transactions <- transactionsObject
     }
     
+    delta <- Sys.time() - start
+    ParallelLogger::logTrace(paste("Preparing data for mining took", signif(delta, 3), attr(delta, "units")))
     s0 <- arulesSequences::cspade(data = transactions, 
                                   parameter = list(support = minimumSupport, 
                                                                         maxlen = patternLength, 
                                                                         maxsize = itemSize), 
                                   control = list(verbose = TRUE, tidLists = TRUE))
     
+    saveRDS(s0, file.path(dirLocation, paste0(fileName, "_FPs_train.Rds")))
+    
     initialFPs <- as.numeric(dim(s0)[1])
-    message(paste("The set of FPs extracted were", initialFPs, "."))
+    ParallelLogger::logInfo(paste("The set of FPs extracted were", initialFPs, "."))
     
     if (removeLengthOnePatterns == TRUE){
       s0 <- arulesSequences::subset(s0, size(x) > 1)
       remainingFPs <- as.numeric(dim(s0)[1])
-      message(paste("After removing length one FPs there were", remainingFPs, "remaining."))
+      ParallelLogger::logInfo(paste("After removing length one FPs there were", remainingFPs, "remaining."))
     }
     
     if(dim(s0)[1]== 0){
       cov <- trainData
-      message("FP mining returned 0 FPs therefore returning trainData.")
+      ParallelLogger::logInfo("FP mining returned 0 FPs therefore returning trainData.")
     } else {
     transactionsRowId <- unique(transactionInfo(transactions)$sequenceID)
     
@@ -146,13 +151,16 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     # Extracting matching transactions
     patternsTrain <- covariateIdsInclude$trainPatterns
     patternsTest <- arules::supportingTransactions(patternsTrain, transactions = transactions)
+    
+    saveRDS(patternsTest, file.path(dirLocation, paste0(fileName, "_FPs_test.Rds")))
+    
     trainCovariateRef <- covariateIdsInclude$trainCovariateRef
     
     transactionsRowId <- transactionInfo(transactions)$sequenceID
     
     if(dim(patternsTest)[1]== 0){
       cov <- trainData
-      message("FP mining on the test set returned 0 FPs, therefore returning testData.")
+      ParallelLogger::logInfo("FP mining on the test set returned 0 FPs, therefore returning testData.")
     } else {
     cov <- addTestSetPatternsToAndromedaFromCSpade(plpDataObject = trainData, 
                                                    fileWithFPs = patternsTest, 
