@@ -3,13 +3,15 @@ createFrequentPatternMiningSettings <- function(minimumSupport,
                                                 maximumPatternLength,
                                                 maximumItemSize, 
                                                 removeLengthOnePatterns = FALSE, 
-                                                temporalPlpData){
+                                                temporalPlpData, 
+                                                transactionsObject = NULL){
   
   miningFPsSettings <- list(support = minimumSupport, 
                             maxlen = maximumPatternLength, 
                             maxsize = maximumItemSize, 
                             removeLengthOnePatterns = removeLengthOnePatterns,
-                            temporalPlpData = temporalPlpData 
+                            temporalPlpData = temporalPlpData, 
+                            transactionsObject = transactionsObject
   )
   
   class(miningFPsSettings) <- "frequentPatternMiningSettings"
@@ -26,6 +28,7 @@ extractFrequentPatternsSettings <- function(frequentPatternMiningSettings, plpDa
     maxsize = frequentPatternMiningSettings$maxsize,
     temporalPlpData = frequentPatternMiningSettings$temporalPlpData,
     removeLengthOnePatterns = frequentPatternMiningSettings$removeLengthOnePatterns,
+    transactionsObject = frequentPatternMiningSettings$transactionsObject,
     plpDataSettings = plpDataSettings,
     outputFolder = outputFolder, 
     fileName = fileName
@@ -50,6 +53,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
   fileName = featureEngineeringSettings$fileName
   removeLengthOnePatterns = featureEngineeringSettings$removeLengthOnePatterns
   temporalPlpData = featureEngineeringSettings$temporalPlpData
+  transactionsObject = featureEngineeringSettings$transactionsObject
   
   # featureExtraction settings
   #covariateSettingsSequence <- featureEngineeringSettings$temporalSequenceFeatureExtractionSettings
@@ -76,12 +80,15 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     covariateData$covariates <- covariateData$covariates %>%
       filter(rowId %in% trainDataRowId)
     
-    
+    if (is.null(transactionsObject) == TRUE){
     inputData <- AssociationRuleMining::getInputFileForCSpade(covariateDataObject = covariateData, 
                                                               fileToSave = file.path(dirLocation, paste0(fileName, ".txt")))
     
     transactions <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, ".txt")), sep = ";", 
                                                   info = c("sequenceID","eventID","SIZE"))
+    } else {
+      transactions <- transactionsObject
+    }
     
     s0 <- arulesSequences::cspade(data = transactions, 
                                   parameter = list(support = minimumSupport, 

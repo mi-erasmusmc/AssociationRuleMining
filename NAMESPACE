@@ -2,6 +2,9 @@
 
 export(addFrequentPatternsToAndromedaFromCSpade)
 export(addTestSetPatternsToAndromedaFromCSpade)
+export(convertAndromedaToArrow)
+export(convertArrowToCyclopsData)
+export(convertCovariateDataToArrow)
 export(createAssociationRulesCovariateSettings)
 export(createFrequentPatternMiningSettings)
 export(extractFrequentPatterns)
