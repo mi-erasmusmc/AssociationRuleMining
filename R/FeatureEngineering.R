@@ -4,14 +4,16 @@ createFrequentPatternMiningSettings <- function(minimumSupport,
                                                 maximumItemSize, 
                                                 removeLengthOnePatterns = FALSE, 
                                                 temporalPlpData, 
-                                                transactionsObject = NULL){
+                                                transactionsObject = NULL, 
+                                                savePatterns = FALSE){
   
   miningFPsSettings <- list(support = minimumSupport, 
                             maxlen = maximumPatternLength, 
                             maxsize = maximumItemSize, 
                             removeLengthOnePatterns = removeLengthOnePatterns,
                             temporalPlpData = temporalPlpData, 
-                            transactionsObject = transactionsObject
+                            transactionsObject = transactionsObject,
+                            savePatterns = savePatterns
   )
   
   class(miningFPsSettings) <- "frequentPatternMiningSettings"
@@ -29,6 +31,7 @@ extractFrequentPatternsSettings <- function(frequentPatternMiningSettings, plpDa
     temporalPlpData = frequentPatternMiningSettings$temporalPlpData,
     removeLengthOnePatterns = frequentPatternMiningSettings$removeLengthOnePatterns,
     transactionsObject = frequentPatternMiningSettings$transactionsObject,
+    savePatterns = frequentPatternMiningSettings$savePatterns,
     plpDataSettings = plpDataSettings,
     outputFolder = outputFolder, 
     fileName = fileName
@@ -54,6 +57,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
   removeLengthOnePatterns = featureEngineeringSettings$removeLengthOnePatterns
   temporalPlpData = featureEngineeringSettings$temporalPlpData
   transactionsObject = featureEngineeringSettings$transactionsObject
+  savePatterns = featureEngineeringSettings$savePatterns
   
   # featureExtraction settings
   #covariateSettingsSequence <- featureEngineeringSettings$temporalSequenceFeatureExtractionSettings
@@ -98,8 +102,9 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
                                                                         maxlen = patternLength, 
                                                                         maxsize = itemSize), 
                                   control = list(verbose = TRUE, tidLists = TRUE))
-    
+    if (savePatterns){
     saveRDS(s0, file.path(dirLocation, paste0(fileName, "_FPs_train.Rds")))
+    }
     
     initialFPs <- as.numeric(dim(s0)[1])
     ParallelLogger::logInfo(paste("The set of FPs extracted were", initialFPs, "."))
@@ -152,7 +157,9 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     patternsTrain <- covariateIdsInclude$trainPatterns
     patternsTest <- arules::supportingTransactions(patternsTrain, transactions = transactions)
     
+    if (savePatterns){
     saveRDS(patternsTest, file.path(dirLocation, paste0(fileName, "_FPs_test.Rds")))
+    }
     
     trainCovariateRef <- covariateIdsInclude$trainCovariateRef
     
@@ -174,27 +181,6 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
                                 trainCovariateRef = trainCovariateRef, 
                                 testPatterns = patternsTest, 
                                 testCovariateRef = cov$covariateData$covariateRef)
-    # # Find them in the test set
-    # ## extract sequence data
-    # sequenceTestPlpData <- PatientLevelPrediction::getPlpData(
-    #   databaseDetails = databaseDetails,
-    #   covariateSettings = covariateSettingsSequence,
-    #   restrictPlpDataSettings = restrictPlpDataSettings
-    # )
-    # 
-    # testDataSequences <- inner_join(sequenceTestPlpData$covariateData$covariates, sequenceTestPlpData$covariateData$covariateRef,by = "covariateId") %>% 
-    #   arrange(rowId, desc(timeId)) %>%
-    #   collect() %>%
-    #   mutate(covariateLabel = stringr::str_replace(covariateName, ".*: ", ""), 
-    #          covariateLabel = stringr::str_replace_all(covariateLabel, " ", "_")) %>%
-    #   group_by(rowId) %>%
-    #   summarize(sequenceCovariteIdString = paste0(covariateId, collapse = ","), 
-    #             sequenceCovariateNameString = paste0(covariateLabel, collapse = ","), .groups = "drop") 
-    # 
-    # 
-    # 
-    # fps <- lapply(fpsToExtract$Sequence, function(x) grep(x, testDataSequences$sequenceCovariateNameString))
-    # names(fps) <- fpsToextract$covariateName
   }
   
   featureEngeering <- list(
