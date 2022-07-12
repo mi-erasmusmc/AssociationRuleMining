@@ -151,7 +151,6 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     #browser()
     transactions <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, "testSet.txt")), sep = ";", info = c("sequenceID","eventID","SIZE"))
     
-    transactionsRowId <- unique(transactionInfo(transactions)$sequenceID)
     # sTest <- arulesSequences::cspade(data = transactions, parameter = list(support = minimumSupport, maxlen = patternLength, maxsize = itemSize), control = list(verbose = TRUE, tidLists = TRUE))
     # Extracting matching transactions
     patternsTrain <- covariateIdsInclude$trainPatterns
@@ -163,7 +162,8 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     
     trainCovariateRef <- covariateIdsInclude$trainCovariateRef
     
-    transactionsRowId <- transactionInfo(transactions)$sequenceID
+    # transactionsRowId <- transactionInfo(transactions)$sequenceID
+    transactionsRowId <- unique(transactionInfo(transactions)$sequenceID)
     
     if(dim(patternsTest)[1]== 0){
       cov <- trainData
