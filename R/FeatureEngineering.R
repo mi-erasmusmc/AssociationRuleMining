@@ -85,15 +85,17 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
       filter(rowId %in% trainDataRowId)
     ParallelLogger::logTrace("\nPreparing data for Frequent Pattern mining...")
     start <- Sys.time()
-    if (is.null(transactionsObject) == TRUE){
+    # if (is.null(transactionsObject)){
+    # if (file.exists(file.path(dirLocation, paste0(fileName, ".txt"))) == FALSE){
     inputData <- AssociationRuleMining::getInputFileForCSpade(covariateDataObject = covariateData, 
                                                               fileToSave = file.path(dirLocation, paste0(fileName, ".txt")))
     
     transactions <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, ".txt")), sep = ";", 
                                                   info = c("sequenceID","eventID","SIZE"))
-    } else {
-      transactions <- transactionsObject
-    }
+    # } else {
+    #   transactions <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, ".txt")), sep = ";", 
+    #                                                 info = c("sequenceID","eventID","SIZE"))
+    # }
     
     delta <- Sys.time() - start
     ParallelLogger::logTrace(paste("Preparing data for mining took", signif(delta, 3), attr(delta, "units")))
@@ -101,7 +103,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
                                   parameter = list(support = minimumSupport, 
                                                                         maxlen = patternLength, 
                                                                         maxsize = itemSize), 
-                                  control = list(verbose = TRUE, tidLists = TRUE))
+                                  control = list(verbose = TRUE, tidLists = TRUE, numpart = 1))
     if (savePatterns){
     saveRDS(s0, file.path(dirLocation, paste0(fileName, "_FPs_train.Rds")))
     }
@@ -121,11 +123,24 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     } else {
     transactionsRowId <- unique(transactionInfo(transactions)$sequenceID)
     
+    #if (nrow(s0) < 5000) {
     cov <- AssociationRuleMining::addFrequentPatternsToAndromedaFromCSpade(plpDataObject = trainData, 
                                                                            fileWithFPs = s0,
                                                                            objectWithIds = inputData, 
                                                                            transactionsRowId = transactionsRowId,
                                                                            fileToSave = file.path(dirLocation, fileName))
+    # } else {
+    #   batches <- createBatch(s0)
+    #   andromedaList <- lapply(batches, function(x) AssociationRuleMining::addFrequentPatternsToAndromedaFromCSpade(plpDataObject = trainData, 
+    #                                                                                                              fileWithFPs = x,
+    #                                                                                                              objectWithIds = inputData, 
+    #                                                                                                              transactionsRowId = transactionsRowId,
+    #                                                                                                              fileToSave = file.path(dirLocation, fileName)))
+    # covariateList <- lapply(andromedaList[-1], function(x) appendBatch(andromedaList[[1]]$covariateData$covariates, x$covariateData$covariates))
+    # covariateRefList <- lapply(andromedaList[-1], function(x) appendBatch(andromedaList[[1]]$covariateData$covariateRef, x$covariateData$covariateRef))
+    # cov <- andromedaList[[1]]
+    # lapply(andromedaList[-1], function(x) Andromeda::close(x$covariateData))
+    # }
     }
     #drop(covariateData)
     covariateIdsInclude <- list(trainPatterns = s0, 
@@ -169,6 +184,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
       cov <- trainData
       ParallelLogger::logInfo("FP mining on the test set returned 0 FPs, therefore returning testData.")
     } else {
+
     cov <- addTestSetPatternsToAndromedaFromCSpade(plpDataObject = trainData, 
                                                    fileWithFPs = patternsTest, 
                                                    objectWithIds = inputDataTest,
@@ -197,3 +213,13 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
   )
   return(cov)
 }
+
+createBatch <- function(frequentPatterns, batchSize = 5000){
+  x <- split(frequentPatterns, (seq(nrow(frequentPatterns))-1) %/% batchSize) 
+  return(x)
+}
+
+appendBatch <- function(tbl, batch){
+  Andromeda::appendToTable(tbl, batch)
+}
+
