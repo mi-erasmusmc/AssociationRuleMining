@@ -14,15 +14,21 @@ filterCommonPatterns <- function(patternsObjectOne,
   }
   
   #commonPatterns <- arulesSequences::labels(patternsObjectOne[patternsObjectOne %in% patternsObjectTwo])
-  commonPatterns <- patternsObjectOne[patternsObjectOne %in% patternsObjectTwo]
-  ParallelLogger::logInfo(paste("Common patterns in both objects are", length(commonPatterns), "."))
+  commonPatternsOne <- patternsObjectOne[patternsObjectOne %in% patternsObjectTwo]
+  commonPatternsTwo <- patternsObjectTwo[patternsObjectTwo %in% patternsObjectOne]
+  ParallelLogger::logInfo(paste("Common patterns in both objects are", length(commonPatternsOne), "."))
   
-  commonSequences <-  tibble(sequence = labels(commonPatterns))
-  commonSequences$neg <- support(commonPatterns, transactionsNegative)
-  commonSequences$pos <- arulesSequences::support(commonPatterns, transactionsPositive)
-  commonSequences$difference <- abs(commonSequences$pos - commonSequences$neg)
+  # commonSequences <-  tibble(sequence = labels(commonPatterns))
+  
+  df1 <- as(commonPatternsOne, "data.frame") 
+  df2 <- as(commonPatternsTwo, "data.frame")
+  commonSequences <- merge(df1, df2, by = "sequence")
+  # commonSequences$neg <- support(commonPatterns, transactionsNegative)
+  # commonSequences$pos <- arulesSequences::support(commonPatterns, transactionsPositive)
+  commonSequences$difference <- abs(commonSequences$support.x - commonSequences$support.y)
   # retain redundant sequences
   redundantSeq <- commonSequences %>% filter(difference < absoluteDifference)
+  ParallelLogger::logInfo(paste("Identified", nrow(redundantSeq), "redundant sequences and will remove."))
   `%notin%` <- Negate(`%in%`)
   s11 <- subset(patternsObjectOne, labels(patternsObjectOne) %notin% redundantSeq$sequence)
   s22 <- subset(patternsObjectTwo, labels(patternsObjectTwo) %notin% redundantSeq$sequence)
