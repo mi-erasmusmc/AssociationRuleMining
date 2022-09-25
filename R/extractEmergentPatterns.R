@@ -112,8 +112,10 @@ extractEmergentPatterns <- function(trainData, featureEngineeringSettings, covar
     
     transactionsNegative <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, "negative.txt")), sep = ";", 
                                                           info = c("sequenceID","eventID","SIZE"))
+    # transactionsNegative@itemsetInfo$sequenceID <- inputDataNegative$rowId
     transactionsPositive <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, "positive.txt")), sep = ";", 
                                                           info = c("sequenceID","eventID","SIZE"))
+    # transactionsPositive@itemsetInfo$sequenceID <- inputDataPositive$rowId
     # } else {
     #   transactions <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, ".txt")), sep = ";", 
     #                                                 info = c("sequenceID","eventID","SIZE"))
@@ -158,32 +160,36 @@ extractEmergentPatterns <- function(trainData, featureEngineeringSettings, covar
                                                                   transactionsNegative = transactionsNegative, 
                                                                   transactionsPositive = transactionsPositive,
                                                                   absoluteDifference = absoluteDifference)
-    
-    if(dim(s0)[1]== 0){
-      cov0 <- trainData %>% 
-        filter(rowId %in% negativeRowId)
+    ParallelLogger::logInfo(paste("After removing redundant FPs from the negative class, there were", dim(commonPatterns[[1]])[1], "remaining.", 
+                                  "After removing length one FPs from the positive class, there were", dim(commonPatterns[[2]])[1], "remaining."))
+  
+    if(dim(commonPatterns[[1]])[1]== 0){
+     cov0 <- negativeCovariateData
+     transactionsRowIdNegative <- NULL
       ParallelLogger::logInfo("FP mining returned 0 FPs for negative class therefore returning trainData.")
     } else {
+      cov0 <- commonPatterns[[1]]
       transactionsRowIdNegative <- unique(transactionInfo(transactionsNegative)$sequenceID)
     }
     
-    if (dim(s1)[1]== 0) {
-      cov1 <- trainData %>% 
-        filter(rowId %in% positiveRowId)
+    if (dim(commonPatterns[[2]])[1]== 0) {
+      cov1 <- positiveCovariateData
+      transactionsRowIdPositive <- NULL
       ParallelLogger::logInfo("FP mining returned 0 FPs for positive class therefore returning trainData.")
     } else {
+      cov1 <- commonPatterns[[2]]
       transactionsRowIdPositive <- unique(transactionInfo(transactionsPositive)$sequenceID)
     }
     
     cov <- addEmergentPatternsToAndromeda(plpDataObject = trainData,
-                                          fileWithFPsNegative = commonPatterns[[1]], 
-                                          fileWithFPsPositive = commonPatterns[[2]],
+                                          fileWithFPsNegative = cov0, 
+                                          fileWithFPsPositive = cov1,
                                           transactionsRowIdNegative = transactionsRowIdNegative, 
                                           transactionsRowIdPositive = transactionsRowIdPositive, 
                                           objectWithIdsNegative = inputDataNegative,
                                           objectWithIdsPositive = inputDataPositive, 
-                                          fileToSave = file.path(dirLocation, fileName)
-    )
+                                          fileToSave = file.path(dirLocation, fileName))
+    
     # } else {
     #   batches <- createBatch(s0)
     #   andromedaList <- lapply(batches, function(x) AssociationRuleMining::addFrequentPatternsToAndromedaFromCSpade(plpDataObject = trainData, 
