@@ -232,7 +232,8 @@ extractEmergentPatterns <- function(trainData, featureEngineeringSettings, covar
   
   # sTest <- arulesSequences::cspade(data = transactions, parameter = list(support = minimumSupport, maxlen = patternLength, maxsize = itemSize), control = list(verbose = TRUE, tidLists = TRUE))
   # Extracting matching transactions
-  patternsTrain <- c(patternsTrain[[1]], patternsTrain[[2]])
+  # patternsTrain <- c(covariateIdsInclude$trainPatterns[[1]], covariateIdsInclude$trainPatterns[[2]])
+  patternsTrain <- c(covariateIdsInclude$trainPatterns[[1]], covariateIdsInclude$trainPatterns[[2]])
   patternsTest <- arules::supportingTransactions(patternsTrain, transactions = transactions)
   
   if (savePatterns){
@@ -262,7 +263,9 @@ extractEmergentPatterns <- function(trainData, featureEngineeringSettings, covar
                               testPatterns = patternsTest, 
                               testCovariateRef = cov$covariateData$covariateRef)
 }
+  
 
+  
 featureEngeering <- list(
   funct = 'extractEmergentPatterns',
   settings = list(
