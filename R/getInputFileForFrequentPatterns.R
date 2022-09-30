@@ -74,7 +74,8 @@ getInputFileForCSpade <- function(covariateDataObject, fileToSave) {
     getNamesFromCovariateId(., covariateDataObject = covariateDataObject, fileToSave = fileToSave) %>%
     arrange(rowId, eventId) %>%
     #select(c(rowId, eventId, SIZE, covariateLabel)) %>% 
-    group_by(rowId, eventId, SIZE, SPMFrowId) %>%
+    # group_by(rowId, eventId, SIZE, SPMFrowId) %>%
+    group_by(rowId, eventId, timeId, SIZE, SPMFrowId) %>%
     summarise(covariateLabel2 = paste(covariateLabel, collapse = ";")) %>% 
     ungroup() %>%
     #group_by(rowId) %>%
