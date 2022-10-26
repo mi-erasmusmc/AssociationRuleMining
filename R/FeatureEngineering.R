@@ -5,7 +5,8 @@ createFrequentPatternMiningSettings <- function(minimumSupport,
                                                 removeLengthOnePatterns = FALSE, 
                                                 temporalPlpData, 
                                                 transactionsObject = NULL, 
-                                                savePatterns = FALSE){
+                                                savePatterns = FALSE, 
+                                                classification = FALSE){
   
   miningFPsSettings <- list(support = minimumSupport, 
                             maxlen = maximumPatternLength, 
@@ -13,7 +14,8 @@ createFrequentPatternMiningSettings <- function(minimumSupport,
                             removeLengthOnePatterns = removeLengthOnePatterns,
                             temporalPlpData = temporalPlpData, 
                             transactionsObject = transactionsObject,
-                            savePatterns = savePatterns
+                            savePatterns = savePatterns, 
+                            classification = classification
   )
   
   class(miningFPsSettings) <- "frequentPatternMiningSettings"
@@ -21,7 +23,7 @@ createFrequentPatternMiningSettings <- function(minimumSupport,
 }
 
 #' @export
-extractFrequentPatternsSettings <- function(frequentPatternMiningSettings, plpDataSettings, outputFolder = getwd(), fileName){
+extractFrequentPatternsSettings <- function(frequentPatternMiningSettings, outputFolder = getwd(), fileName){
   #add checks
   
   featureEngineeringSettings <- list(
@@ -32,7 +34,8 @@ extractFrequentPatternsSettings <- function(frequentPatternMiningSettings, plpDa
     removeLengthOnePatterns = frequentPatternMiningSettings$removeLengthOnePatterns,
     transactionsObject = frequentPatternMiningSettings$transactionsObject,
     savePatterns = frequentPatternMiningSettings$savePatterns,
-    plpDataSettings = plpDataSettings,
+    classification = frequentPatternMiningSettings$classification,
+    # plpDataSettings = plpDataSettings,
     outputFolder = outputFolder, 
     fileName = fileName
   )
@@ -58,6 +61,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
   temporalPlpData = featureEngineeringSettings$temporalPlpData
   transactionsObject = featureEngineeringSettings$transactionsObject
   savePatterns = featureEngineeringSettings$savePatterns
+  classification = featureEngineeringSettings$classification
   
   # featureExtraction settings
   #covariateSettingsSequence <- featureEngineeringSettings$temporalSequenceFeatureExtractionSettings
@@ -87,6 +91,7 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
     start <- Sys.time()
     # if (is.null(transactionsObject)){
     # if (file.exists(file.path(dirLocation, paste0(fileName, ".txt"))) == FALSE){
+    if (classification == FALSE){
     inputData <- AssociationRuleMining::getInputFileForCSpade(covariateDataObject = covariateData, 
                                                               fileToSave = file.path(dirLocation, paste0(fileName, ".txt")))
     
@@ -104,6 +109,27 @@ extractFrequentPatterns <- function(trainData, featureEngineeringSettings, covar
                                                                         maxlen = patternLength, 
                                                                         maxsize = itemSize), 
                                   control = list(verbose = TRUE, tidLists = TRUE, numpart = 1))
+    } else {
+      trInputData <- AssociationRuleMining::getInputFileForCSpade(covariateDataObject = covariateData, 
+                                                                fileToSave = file.path(dirLocation, paste0(fileName, ".txt")))
+      labels <- data.frame(rowId = trainData$labels$rowId, 
+                           outcomeCount = trainData$labels$outcomeCount)
+      inputData <- AssociationRuleMining::getInputFileForCSpadeWithClass(studyPopulation = labels, 
+                                                                         transactions = trInputData, 
+                                                                         outputFolder = file.path(dirLocation, paste0(fileName, "class.txt")))
+      
+      transactions <- arulesSequences::read_baskets(con =  file.path(dirLocation, paste0(fileName, "class.txt")), sep = ";", 
+                                                    info = c("sequenceID","eventID","SIZE", "classID"))
+    
+      delta <- Sys.time() - start
+      ParallelLogger::logTrace(paste("Preparing data for mining took", signif(delta, 3), attr(delta, "units")))
+      s0 <- arulesSequences::cspade(data = transactions, 
+                                    parameter = list(support = minimumSupport, 
+                                                     maxlen = patternLength, 
+                                                     maxsize = itemSize), 
+                                    control = list(verbose = TRUE, tidLists = TRUE, numpart = 1))
+    }
+    
     if (savePatterns){
     saveRDS(s0, file.path(dirLocation, paste0(fileName, "_FPs_train.Rds")))
     }
