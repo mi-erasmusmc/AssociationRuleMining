@@ -16,7 +16,7 @@ getTemporalInputFromFeatExtract <- function(data){
     dplyr::mutate(covariateId = paste0(covariateId, collapse = ", ")) %>%
     dplyr::ungroup() %>%
     dplyr::group_by(rowId, timeId, covariateId) %>%
-    dplyr::summarize(SIZE = n()) %>%
+    dplyr::summarize(SIZE = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::group_by(rowId) %>%
     dplyr::arrange(desc(timeId)) %>%
