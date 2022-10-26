@@ -38,10 +38,21 @@ toCovariateDataCSpade <- function(inputFile,
   #covariateLong$Sequences <- gsub(x = covariateLong$Sequences,pattern = "=>$", replacement = "")
   
   # Constructing unique covariate Ids
-  uniqueSeqs <- unique(covariateLong$Sequences)
-  uniqueCovariates <- data.frame(covariateName = uniqueSeqs) 
+  # uniqueSeqs <- unique(covariateLong$Sequences)
+  # uniqueCovariates <- data.frame(covariateName = uniqueSeqs)
+  
+  # Adding support as a column in covariateRef
+  uniqueCovariates <- as(inputFile, "data.frame") %>%
+    dplyr::rename(covariateName = sequence) %>% 
+    dplyr::mutate(patternLength = arulesSequences::size(inputFile))
   uniqueCovariateIds <- uniqueCovariates %>%
-    dplyr::mutate(covariateId = as.numeric(getUniqueId(Names = covariateName, idstaken = NULL)))
+    dplyr::mutate(covariateId = as.numeric(getUniqueId(Names = covariateName, idstaken = NULL))) 
+  
+  if (all(c("`0`", "`1`") %in% names(uniqueCovariateIds))){
+    uniqueCovariateIds <- uniqueCovariateIds %>%
+      rename(negativeClass = "`0`", 
+             positiveClass = "`1`")
+  }
   
   # Assign the true patient id to rowId
   
@@ -83,6 +94,10 @@ toCovariateDataCSpade <- function(inputFile,
   # dplyr::rename("rowId" = "trueRowIds")
   
   # Constructing covariateData's object $covariateRef
+  # covariateRef <- uniqueCovariateIds %>%
+  #   dplyr::mutate(analysisId = 999, 
+  #                 conceptId = 0, 
+  #                 patternLength = stringr::str_count(covariateName, "\\},\\{") + 1)
   covariateRef <- uniqueCovariateIds %>%
     dplyr::mutate(analysisId = 999, 
                   conceptId = 0)
@@ -130,6 +145,14 @@ toCovariateDataObjectCSpade <- function(fileWithFPs,
   t2start <- Sys.time()
   
   message("Appending covariates to covariate data object...")
+  # At this point covariateDataObject contains no patterns therefore fp relevant metrics not applicable
+  # covariateDataObject$covariateRef <- covariateDataObject$covariateRef %>% 
+  #   mutate(patternLength = NA, 
+  #          support = NA)
+  
+  fpdata_names <- fpdata$covariateRef %>% colnames()
+  covariateDataObject$covariateRef <- mutateDf(covariateDataObject$covariateRef, fpdata_names) 
+  
   covariateData <- appendCovariateData(tempCovariateData = fpdata, covariateData = covariateDataObject)
   
   t2duration <- Sys.time() - t2start
@@ -173,7 +196,7 @@ addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs,
   # step 5.5: attaching the new covariateData object to the new plpData
   newPlpDataObject$covariateData <- covariateData
   
-  savePlpData(newPlpDataObject, file = fileToSave)
+  PatientLevelPrediction::savePlpData(newPlpDataObject, file = fileToSave)
   
   return(newPlpDataObject)
   
@@ -191,5 +214,16 @@ getInputFileForCSpadeWithClass<- function(studyPopulation, transactions, outputF
     write.table(., paste0(outputFolder), sep=";", row.names = FALSE, col.names = FALSE, quote = FALSE)
   
   return(inputClass)
+}
+
+mutateDf <- function(df, names){
+  existingNames <- colnames(df)
+  name <- names[!(names %in% existingNames)]
+  for (i in seq_along(name)) {
+    varName <- paste(name[i])
+    df <- df %>%
+      mutate(!!varName := NA)
+  }
+  return(df)
 }
 

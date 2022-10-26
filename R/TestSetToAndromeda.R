@@ -31,9 +31,23 @@ testSetToCovariateDataCSpade <- function(inputFile,
   
   # Getting unique covariateIds same as Train
   uniqueSeqs <- unique(covariateLong$Sequences)
-  uniqueCovariates <- data.frame(covariateName = uniqueSeqs) 
+  # uniqueCovariates <- data.frame(covariateName = uniqueSeqs) 
+  
+  # Adding support as a column in covariateRef
+  absSupport <- sapply(exp, length)
+  uniqueCovariates <- data.frame(
+    sequence = names(exp),
+    support = absSupport/length(unique(objectWithIds$rowId))
+  ) %>%
+    dplyr::rename(covariateName = sequence) %>% 
+    dplyr::mutate(patternLength = stringr::str_count(covariateName, "\\},\\{") + 1)
+  rownames(uniqueCovariates) <- NULL
+  
+  
   trainCovariateIds <- plpDataTrain %>% filter(analysisId == 999) %>% collect()
-  uniqueCovariateIds <- trainCovariateIds %>% inner_join(uniqueCovariates, by = "covariateName")
+  uniqueCovariateIds <- trainCovariateIds %>% 
+    select(covariateId, covariateName, analysisId, conceptId) %>%
+    inner_join(uniqueCovariates, by = "covariateName")
 
   
   # include unique ids in the data
@@ -46,8 +60,7 @@ testSetToCovariateDataCSpade <- function(inputFile,
   
   # Constructing covariateData's object $covariateRef
   covariateRef <- uniqueCovariateIds %>%
-    dplyr::mutate(analysisId = 999, 
-                  conceptId = 0)
+    dplyr::select(covariateId, covariateName, analysisId, conceptId, support, patternLength) 
   
   # Constructing covariateData's object $analysisRef
   analysisRef <- data.frame(analysisId = 999, 
@@ -95,6 +108,10 @@ testSetToCovariateDataObjectCSpade <- function(fileWithFPs,
   t2start <- Sys.time()
   
   message("Appending covariates to covariate data object...")
+  # At this point covariateDataObject contains no patterns therefore fp relevant metrics not applicable
+  covariateDataObject$covariateRef <- covariateDataObject$covariateRef %>% 
+    mutate(patternLength = NA, 
+           support = NA)
   covariateData <- appendCovariateData(tempCovariateData = fpdata, covariateData = covariateDataObject)
   
   t2duration <- Sys.time() - t2start
@@ -145,7 +162,7 @@ addTestSetPatternsToAndromedaFromCSpade <- function(plpDataObject,
   # step 5.5: attaching the new covariateData object to the new plpData
   newPlpDataObject$covariateData <- covariateData
   
-  savePlpData(newPlpDataObject, file = fileToSave)
+  PatientLevelPrediction::savePlpData(newPlpDataObject, file = fileToSave)
   
   return(newPlpDataObject)
   
