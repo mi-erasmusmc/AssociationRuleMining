@@ -74,7 +74,8 @@ getInputFileForCSpade <- function(covariateDataObject, fileToSave) {
     getNamesFromCovariateId(., covariateDataObject = covariateDataObject, fileToSave = fileToSave) %>%
     arrange(rowId, eventId) %>%
     #select(c(rowId, eventId, SIZE, covariateLabel)) %>% 
-    group_by(rowId, eventId, SIZE, SPMFrowId) %>%
+    # group_by(rowId, eventId, SIZE, SPMFrowId) %>%
+    group_by(rowId, eventId, timeId, SIZE, SPMFrowId) %>%
     summarise(covariateLabel2 = paste(covariateLabel, collapse = ";")) %>% 
     ungroup() %>%
     #group_by(rowId) %>%
@@ -86,7 +87,7 @@ getInputFileForCSpade <- function(covariateDataObject, fileToSave) {
     
   if (is.null(fileToSave)) {
   trans <- as(tidyData[,"covariateLabel2", drop = FALSE], "transactions")
-  transactionInfo(trans)$sequenceID <- tidyData$cspadeRowId
+  transactionInfo(trans)$sequenceID <- as.numeric(tidyData$cspadeRowId)
   transactionInfo(trans)$eventID <- tidyData$eventId
   } else {
     tidyData %>%

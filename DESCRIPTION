@@ -1,5 +1,5 @@
 Package: AssociationRuleMining
-Title: What the Package Does (One Line, Title Case)
+Title: Perform Association Rule and Frequent Pattern Mining on OMOP-CDM
 Version: 0.0.0.9000
 Authors@R: 
     person(given = "Solomon",
@@ -13,7 +13,7 @@ License: `use_mit_license()`, `use_gpl3_license()` or friends to
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.1
+RoxygenNote: 7.2.1
 Imports: 
     dplyr,
     SqlRender,
@@ -22,8 +22,12 @@ Imports:
     stringr,
     stringi,
     vroom,
-    lifecycle, 
-    splitstackshape
+    lifecycle,
+    splitstackshape,
+    ParallelLogger,
+    arulesSequences,
+    arules,
+    magrittr
 Depends:
     R (>=  3.4.0)
 Suggests: 

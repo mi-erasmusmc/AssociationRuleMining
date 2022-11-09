@@ -1,20 +1,21 @@
 #' @export
-toCovariateDataCSpade <- function(inputFile, 
-                                  objectWithIds, 
-                                  transactionsRowId){
+associationRulesToCovariateData <- function(inputFile, 
+                                            objectWithIds, 
+                                            tidLists, 
+                                            transactionsRowId){
   
-  exp <- as(inputFile@tidLists, "list")
+  exp <- as(tidLists, "list")
   FrameData <- lapply(exp, function(x) as.data.frame(x))
   
   suppressMessages({
-  covariateLong <- reshape2::melt(FrameData, value.name = "sequenceID") %>%
-    dplyr::select(L1, sequenceID) %>%
-    dplyr::rename(Sequences = L1) %>%
-    dplyr::mutate(covariateValue = 1)
+    covariateLong <- reshape2::melt(FrameData, value.name = "x") %>%
+      dplyr::select(L1, x) %>%
+      dplyr::rename(Sequences = L1) %>%
+      dplyr::mutate(covariateValue = 1)
   })
   
   # Making rowId numeric
-  covariateLong$sequenceID <- as.numeric(covariateLong$sequenceID)
+  covariateLong$sequenceID <- as.numeric(covariateLong$x)
   
   # Fix rowIds
   # trueRowIds <- tibble(sequenceID = as.numeric(inputFile@tidLists@transactionInfo$sequenceID),
@@ -38,21 +39,10 @@ toCovariateDataCSpade <- function(inputFile,
   #covariateLong$Sequences <- gsub(x = covariateLong$Sequences,pattern = "=>$", replacement = "")
   
   # Constructing unique covariate Ids
-  # uniqueSeqs <- unique(covariateLong$Sequences)
-  # uniqueCovariates <- data.frame(covariateName = uniqueSeqs)
-  
-  # Adding support as a column in covariateRef
-  uniqueCovariates <- as(inputFile, "data.frame") %>%
-    dplyr::rename(covariateName = sequence) %>% 
-    dplyr::mutate(patternLength = arulesSequences::size(inputFile))
+  uniqueSeqs <- unique(covariateLong$Sequences)
+  uniqueCovariates <- data.frame(covariateName = uniqueSeqs) 
   uniqueCovariateIds <- uniqueCovariates %>%
-    dplyr::mutate(covariateId = as.numeric(getUniqueId(Names = covariateName, idstaken = NULL))) 
-  
-  if (all(c("`0`", "`1`") %in% names(uniqueCovariateIds))){
-    uniqueCovariateIds <- uniqueCovariateIds %>%
-      rename(negativeClass = "`0`", 
-             positiveClass = "`1`")
-  }
+    dplyr::mutate(covariateId = as.numeric(AssociationRuleMining:::getUniqueId(Names = covariateName, idstaken = NULL)))
   
   # Assign the true patient id to rowId
   
@@ -94,18 +84,14 @@ toCovariateDataCSpade <- function(inputFile,
   # dplyr::rename("rowId" = "trueRowIds")
   
   # Constructing covariateData's object $covariateRef
-  # covariateRef <- uniqueCovariateIds %>%
-  #   dplyr::mutate(analysisId = 999, 
-  #                 conceptId = 0, 
-  #                 patternLength = stringr::str_count(covariateName, "\\},\\{") + 1)
   covariateRef <- uniqueCovariateIds %>%
     dplyr::mutate(analysisId = 999, 
                   conceptId = 0)
   
   # Constructing covariateData's object $analysisRef
   analysisRef <- data.frame(analysisId = 999, 
-                            analysisName = "FrequentPatterns", 
-                            domainId = "FP",
+                            analysisName = "AssociationRules", 
+                            domainId = "AR",
                             startDay = 0, 
                             endDay = 0,
                             isBinary = "Y",
@@ -126,17 +112,19 @@ toCovariateDataCSpade <- function(inputFile,
   
 }
 #' @export
-toCovariateDataObjectCSpade <- function(fileWithFPs, 
-                                        objectWithIds, 
-                                        covariateDataObject, 
-                                        transactionsRowId){
+associationRulesToCovariateDataObject <- function(fileWithFPs, 
+                                                  objectWithIds, 
+                                                  tidLists = tidLists,
+                                                  covariateDataObject, 
+                                                  transactionsRowId){
   
   t1start <- Sys.time()
   
   message("Writing frequent patterns as covariates...")
-  fpdata <- toCovariateDataCSpade(inputFile = fileWithFPs, 
-                                  objectWithIds = objectWithIds, 
-                                  transactionsRowId = transactionsRowId)
+  fpdata <- associationRulesToCovariateData(inputFile = fileWithFPs, 
+                                            objectWithIds = objectWithIds, 
+                                            tidLists = tidLists,
+                                            transactionsRowId = transactionsRowId)
   
   t1duration <- Sys.time() - t1start
   
@@ -145,15 +133,7 @@ toCovariateDataObjectCSpade <- function(fileWithFPs,
   t2start <- Sys.time()
   
   message("Appending covariates to covariate data object...")
-  # At this point covariateDataObject contains no patterns therefore fp relevant metrics not applicable
-  # covariateDataObject$covariateRef <- covariateDataObject$covariateRef %>% 
-  #   mutate(patternLength = NA, 
-  #          support = NA)
-  
-  fpdata_names <- fpdata$covariateRef %>% colnames()
-  covariateDataObject$covariateRef <- mutateDf(covariateDataObject$covariateRef, fpdata_names) 
-  
-  covariateData <- appendCovariateData(tempCovariateData = fpdata, covariateData = covariateDataObject)
+  covariateData <- AssociationRuleMining:::appendCovariateData(tempCovariateData = fpdata, covariateData = covariateDataObject)
   
   t2duration <- Sys.time() - t2start
   
@@ -162,7 +142,12 @@ toCovariateDataObjectCSpade <- function(fileWithFPs,
   return(covariateData)
 }
 #' @export
-addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs, transactionsRowId, objectWithIds, fileToSave) {
+addAssociationRulesToAndromeda <- function(plpDataObject, 
+                                           fileWithFPs, 
+                                           tidLists,
+                                           transactionsRowId,
+                                           objectWithIds, 
+                                           fileToSave) {
   if (!class(plpDataObject) == "plpData") {
     stop("plpDataObject should be a plpData object!")
   }
@@ -173,10 +158,11 @@ addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs,
   covariateData <- Andromeda::copyAndromeda(oldPlpDataObject$covariateData)
   
   #Step 2: add in there the FPs as covariates
-  covariateData <- toCovariateDataObjectCSpade(fileWithFPs = fileWithFPs, 
-                                               objectWithIds = objectWithIds,
-                                               transactionsRowId = transactionsRowId,
-                                               covariateDataObject = covariateData) 
+  covariateData <- associationRulesToCovariateDataObject(fileWithFPs = fileWithFPs, 
+                                                         objectWithIds = objectWithIds,
+                                                         tidLists = tidLists,
+                                                         transactionsRowId = transactionsRowId,
+                                                         covariateDataObject = covariateData) 
   
   #Step3: copy the old plpData[covariateData] attribute called "metadata"
   metaData <- attr(oldPlpDataObject$covariateData, "metaData")
@@ -196,34 +182,11 @@ addFrequentPatternsToAndromedaFromCSpade <- function(plpDataObject, fileWithFPs,
   # step 5.5: attaching the new covariateData object to the new plpData
   newPlpDataObject$covariateData <- covariateData
   
-  PatientLevelPrediction::savePlpData(newPlpDataObject, file = fileToSave)
+  savePlpData(newPlpDataObject, file = fileToSave)
   
   return(newPlpDataObject)
   
 }
 
-#' @export
-getInputFileForCSpadeWithClass<- function(studyPopulation, transactions, outputFolder){
-  inputClass <- studyPopulation %>%
-    dplyr::select(rowId, outcomeCount)%>%
-    dplyr::right_join(., transactions, by = "rowId" ) %>%
-    dplyr::mutate_at(vars(rowId, eventId, cspadeRowId), as.integer)
-  
-  input <- inputClass %>% 
-    dplyr::select(cspadeRowId, eventId, SIZE, outcomeCount, covariateLabel2) %>%
-    write.table(., paste0(outputFolder), sep=";", row.names = FALSE, col.names = FALSE, quote = FALSE)
-  
-  return(inputClass)
-}
 
-mutateDf <- function(df, names){
-  existingNames <- colnames(df)
-  name <- names[!(names %in% existingNames)]
-  for (i in seq_along(name)) {
-    varName <- paste(name[i])
-    df <- df %>%
-      mutate(!!varName := NA)
-  }
-  return(df)
-}
 
