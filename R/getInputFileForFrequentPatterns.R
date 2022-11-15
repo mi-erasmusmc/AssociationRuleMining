@@ -67,7 +67,7 @@ getInputFileForCSpade <- function(covariateDataObject, fileToSave) {
   #  }
   #}
   
-  data <- as.data.frame(covariateDataObject$covariates) %>%
+  data <- covariateDataObject$covariates %>% dplyr::collect() %>%
     getTemporalInputFromFeatExtract(data = .) 
   
   tidyData <- data %>%

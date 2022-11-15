@@ -1,6 +1,6 @@
 getNamesFromCovariateId <- function(data, covariateDataObject, fileToSave){
   cDO = covariateDataObject
-  names.df <- as.data.frame(cDO$covariateRef)
+  names.df <- cDO$covariateRef %>% dplyr::collect()
   names.df$covariateId <- as.character(names.df$covariateId)
   names.df$covariateLabel <-  stringr::str_replace(names.df$covariateName, ".*: ", "")
   names.df$covariateLabel2 <- stringr::str_replace_all(names.df$covariateLabel, " ", "_")
