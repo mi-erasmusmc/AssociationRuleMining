@@ -150,8 +150,8 @@ toCovariateDataObjectCSpade <- function(fileWithFPs,
   #   mutate(patternLength = NA, 
   #          support = NA)
   
-  fpdata_names <- fpdata$covariateRef %>% colnames()
-  covariateDataObject$covariateRef <- mutateDf(covariateDataObject$covariateRef, fpdata_names) 
+  newRef <- Andromeda::andromeda(covRef=covariateDataObject$covariateRef$WithSchema(fpdata$covariateRef$schema))
+  covariateDataObject$covariateRef <- newRef$covRef
   
   covariateData <- appendCovariateData(tempCovariateData = fpdata, covariateData = covariateDataObject)
   
@@ -216,14 +216,10 @@ getInputFileForCSpadeWithClass<- function(studyPopulation, transactions, outputF
   return(inputClass)
 }
 
-mutateDf <- function(df, names){
-  existingNames <- colnames(df)
-  name <- names[!(names %in% existingNames)]
-  for (i in seq_along(name)) {
-    varName <- paste(name[i])
-    df <- df %>%
-      mutate(!!varName := NA)
-  }
-  return(df)
+mutateDf <- function(df, schema){
+  df$schema <- schema
+  newDf <- Andromeda::andromeda()
+  newDf$covariateRef <- df
+  return(newDf$covariateRef)
 }
 
