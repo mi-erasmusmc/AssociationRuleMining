@@ -72,16 +72,16 @@ getInputFileForCSpade <- function(covariateDataObject, fileToSave) {
   
   tidyData <- data %>%
     getNamesFromCovariateId(., covariateDataObject = covariateDataObject, fileToSave = fileToSave) %>%
-    arrange(rowId, eventId) %>%
+    dplyr::arrange(rowId, eventId) %>%
     #select(c(rowId, eventId, SIZE, covariateLabel)) %>% 
     # group_by(rowId, eventId, SIZE, SPMFrowId) %>%
-    group_by(rowId, eventId, timeId, SIZE, SPMFrowId) %>%
-    summarise(covariateLabel2 = paste(covariateLabel, collapse = ";")) %>% 
-    ungroup() %>%
+    dplyr::group_by(rowId, eventId, timeId, SIZE, SPMFrowId) %>%
+    dplyr::summarise(covariateLabel2 = paste(covariateLabel, collapse = ";")) %>% 
+    dplyr::ungroup() %>%
     #group_by(rowId) %>%
-    mutate(cspadeRowId = SPMFrowId + 1) %>%
-    distinct() %>% 
-    mutate_at(vars(cspadeRowId, eventId, SIZE), as.integer)
+    dplyr::mutate(cspadeRowId = SPMFrowId + 1) %>%
+    dplyr::distinct() %>% 
+    dplyr::mutate_at(vars(cspadeRowId, eventId, SIZE), as.integer)
   
   unlink(fileToSave)
     
