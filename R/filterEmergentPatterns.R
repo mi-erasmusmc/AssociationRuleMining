@@ -7,7 +7,8 @@ filterCommonPatterns <- function(patternsObjectOne,
                                  patternsObjectTwo, 
                                  absoluteDifference, 
                                  transactionsNegative, 
-                                 transactionsPositive){
+                                 transactionsPositive, 
+                                 keepDiscriminative){
   
   if (absoluteDifference < 0 && absoluteDifference > 1 ) {
     stop("Absolute difference should be between 0 and 1 indicating the relative difference that should exist to include a common pattern in the final set.")
@@ -26,13 +27,21 @@ filterCommonPatterns <- function(patternsObjectOne,
   # commonSequences$neg <- support(commonPatterns, transactionsNegative)
   # commonSequences$pos <- arulesSequences::support(commonPatterns, transactionsPositive)
   commonSequences$difference <- abs(commonSequences$support.x - commonSequences$support.y)
+  # Instead of keeping perfectly discriminative patterns, which happens in this section:
   # retain redundant sequences
+  if (keepDiscriminative == FALSE){
   redundantSeq <- commonSequences %>% filter(difference < absoluteDifference)
   ParallelLogger::logInfo(paste("Identified", nrow(redundantSeq), "redundant sequences and will remove."))
   `%notin%` <- Negate(`%in%`)
   s11 <- subset(patternsObjectOne, labels(patternsObjectOne) %notin% redundantSeq$sequence)
   s22 <- subset(patternsObjectTwo, labels(patternsObjectTwo) %notin% redundantSeq$sequence)
-  
+  # we will keep only those patterns that appear with different frequency in the two groups
+  } else {
+  discriminativeSeq <- commonSequences %>% filter(difference >= absoluteDifference)
+  ParallelLogger::logInfo(paste("Identified", nrow(discriminativeSeq), "discriminative sequences."))
+  s11 <- subset(patternsObjectOne, labels(patternsObjectOne) %in% discriminativeSeq$sequence)
+  s22 <- subset(patternsObjectTwo, labels(patternsObjectTwo) %in% discriminativeSeq$sequence)
+  }
   result <- list(s11, s22)
   
   return(result)
