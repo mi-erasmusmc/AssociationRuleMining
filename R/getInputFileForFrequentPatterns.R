@@ -81,17 +81,17 @@ getInputFileForCSpade <- function(covariateDataObject, fileToSave) {
     #group_by(rowId) %>%
     dplyr::mutate(cspadeRowId = SPMFrowId + 1) %>%
     dplyr::distinct() %>% 
-    dplyr::mutate_at(vars(cspadeRowId, eventId, SIZE), as.integer)
+    dplyr::mutate(dplyr::across(c(cspadeRowId, eventId, SIZE), as.integer))
   
   unlink(fileToSave)
     
   if (is.null(fileToSave)) {
   trans <- as(tidyData[,"covariateLabel2", drop = FALSE], "transactions")
-  transactionInfo(trans)$sequenceID <- as.numeric(tidyData$cspadeRowId)
-  transactionInfo(trans)$eventID <- tidyData$eventId
+  arulesSequences::transactionInfo(trans)$sequenceID <- as.numeric(tidyData$cspadeRowId)
+  arulesSequences::transactionInfo(trans)$eventID <- tidyData$eventId
   } else {
     tidyData %>%
-      select(cspadeRowId, eventId, SIZE, covariateLabel2) %>%
+      dplyr::select(cspadeRowId, eventId, SIZE, covariateLabel2) %>%
       write.table(., file = paste0(fileToSave), sep = ";", row.names = FALSE, col.names = FALSE, quote = FALSE)
     }
   
