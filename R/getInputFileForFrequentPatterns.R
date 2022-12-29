@@ -87,8 +87,8 @@ getInputFileForCSpade <- function(covariateDataObject, fileToSave) {
     
   if (is.null(fileToSave)) {
   trans <- as(tidyData[,"covariateLabel2", drop = FALSE], "transactions")
-  arulesSequences::transactionInfo(trans)$sequenceID <- as.numeric(tidyData$cspadeRowId)
-  arulesSequences::transactionInfo(trans)$eventID <- tidyData$eventId
+  arules::transactionInfo(trans)$sequenceID <- as.numeric(tidyData$cspadeRowId)
+  arules::transactionInfo(trans)$eventID <- tidyData$eventId
   } else {
     tidyData %>%
       dplyr::select(cspadeRowId, eventId, SIZE, covariateLabel2) %>%
