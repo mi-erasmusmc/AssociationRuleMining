@@ -35,11 +35,7 @@ addEmergentPatternsToAndromeda <- function(plpDataObject,
   }
   
   if(!is.null(transactionsRowIdPositive) && !is.null(transactionsRowIdNegative)){
-    # fileWithFPs <- c(fileWithFPsNegative, fileWithFPsPositive)
-    # tidListNegative <- as(fileWithFPsNegative@tidLists, "list")
-    # tidListPositive <- as(fileWithFPsPositive@tidLists, "list")
-    # keys <- unique(c(names(tidListNegative), names(tidListPositive)))
-    # listWithFps <- setNames(mapply(c, tidListNegative[keys], tidListPositive[keys]), keys)
+ 
     # objectWithIds <- full_join(objectWithIdsNegative, objectWithIdsPositive)
     
     covariateData <- toCovariateDataObjectCSpadeEmergentPatterns(covariateDataObject = covariateData, 
@@ -85,14 +81,19 @@ toCovariateDataCSpadeEmergentPatterns <- function(inputFileNegative,
                                                   transactionsRowIdPositive){
   
   exp0 <- as(inputFileNegative@tidLists, "list")
-  FrameData0 <- lapply(exp0, function(x) as.data.frame(x))
-  
-  suppressMessages({
-    covariateLong0 <- reshape2::melt(FrameData0, value.name = "sequenceID") %>%
-      dplyr::select(L1, sequenceID) %>%
-      dplyr::rename(Sequences = L1) %>%
-      dplyr::mutate(covariateValue = 1)
-  })
+  # FrameData0 <- lapply(exp0, function(x) as.data.frame(x))
+  # 
+  # suppressMessages({
+  #   covariateLong0 <- reshape2::melt(FrameData0, value.name = "sequenceID") %>%
+  #     dplyr::select(L1, sequenceID) %>%
+  #     dplyr::rename(Sequences = L1) %>%
+  #     dplyr::mutate(covariateValue = 1)
+  # })
+  covariateLong0 <- purrr::map_df(exp0, ~as.data.frame(.x), .id="id") %>%
+    dplyr::rename(Sequences = id, 
+                  sequenceID = .x) %>%
+    dplyr::mutate(covariateValue = 1, 
+                  sequenceID = as.numeric(sequenceID))
   
   # Making rowId numeric
   covariateLong0$sequenceID <- as.numeric(covariateLong0$sequenceID)
@@ -107,14 +108,20 @@ toCovariateDataCSpadeEmergentPatterns <- function(inputFileNegative,
     select(c("Sequences", "covariateValue", "rowId"))
   
   exp1 <- as(inputFilePositive@tidLists, "list")
-  FrameData1 <- lapply(exp1, function(x) as.data.frame(x))
+  # FrameData1 <- lapply(exp1, function(x) as.data.frame(x))
+  # 
+  # suppressMessages({
+  #   covariateLong1 <- reshape2::melt(FrameData1, value.name = "sequenceID") %>%
+  #     dplyr::select(L1, sequenceID) %>%
+  #     dplyr::rename(Sequences = L1) %>%
+  #     dplyr::mutate(covariateValue = 1)
+  # })
   
-  suppressMessages({
-    covariateLong1 <- reshape2::melt(FrameData1, value.name = "sequenceID") %>%
-      dplyr::select(L1, sequenceID) %>%
-      dplyr::rename(Sequences = L1) %>%
-      dplyr::mutate(covariateValue = 1)
-  })
+  covariateLong1 <- purrr::map_df(exp1, ~as.data.frame(.x), .id="id") %>%
+    dplyr::rename(Sequences = id, 
+                  sequenceID = .x) %>%
+    dplyr::mutate(covariateValue = 1, 
+                  sequenceID = as.numeric(sequenceID))
   
   # Making rowId numeric
   covariateLong1$sequenceID <- as.numeric(covariateLong1$sequenceID)
@@ -129,17 +136,32 @@ toCovariateDataCSpadeEmergentPatterns <- function(inputFileNegative,
     select(c("Sequences", "covariateValue", "rowId"))
   
   covariateLong <- rbind(covariateLong0, covariateLong1)
-  # Fixing names of sequences
+
+  # # Constructing unique covariate Ids
+  # uniqueSeqs <- unique(covariateLong$Sequences)
+  # uniqueCovariates <- data.frame(covariateName = uniqueSeqs)
+  # uniqueCovariateIds <- uniqueCovariates %>%
+  #   dplyr::mutate(covariateId = as.numeric(getUniqueId(Names = covariateName, idstaken = NULL)))
+  # 
+  # New way but not yet implemented
+  uniqueCovariates0 <- as(inputFileNegative, "data.frame") %>%
+    dplyr::rename(covariateName = sequence) %>%
+    dplyr::mutate(patternLength = arulesSequences::size(inputFileNegative))
   
-  #### Need to change this for the arulesSequences results
-  #covariateLong$Sequences <- gsub(x = covariateLong$Sequences, pattern = "-1", replacement = "=>")
-  #covariateLong$Sequences <- gsub(x = covariateLong$Sequences,pattern = "=>$", replacement = "")
+  uniqueCovariates1 <- as(inputFilePositive, "data.frame") %>%
+    dplyr::rename(covariateName = sequence) %>%
+    dplyr::mutate(patternLength = arulesSequences::size(inputFilePositive))
   
-  # Constructing unique covariate Ids
-  uniqueSeqs <- unique(covariateLong$Sequences)
-  uniqueCovariates <- data.frame(covariateName = uniqueSeqs) 
+  uniqueCovariates <- full_join(uniqueCovariates0, uniqueCovariates1, by = "covariateName")
+  
   uniqueCovariateIds <- uniqueCovariates %>%
     dplyr::mutate(covariateId = as.numeric(getUniqueId(Names = covariateName, idstaken = NULL)))
+  
+  if (all(c("`0`", "`1`") %in% names(uniqueCovariateIds))){
+    uniqueCovariateIds <- uniqueCovariateIds %>%
+      rename(negativeClass = "`0`", 
+             positiveClass = "`1`")
+  }
   
   # Assign the true patient id to rowId
   
@@ -234,6 +256,9 @@ toCovariateDataObjectCSpadeEmergentPatterns <- function(covariateDataObject,
   t2start <- Sys.time()
   
   message("Appending covariates to covariate data object...")
+  newRef <- Andromeda::andromeda(covRef=covariateDataObject$covariateRef$WithSchema(fpdata$covariateRef$schema))
+  covariateDataObject$covariateRef <- newRef$covRef
+  
   covariateData <- appendCovariateData(tempCovariateData = fpdata, covariateData = covariateDataObject)
   
   t2duration <- Sys.time() - t2start
