@@ -17,7 +17,7 @@ getInputFileForAssociationRules <- function(covariateDataObject, fileToSave){
   #  }
   #}
   
-  data <- as.data.frame(covariateDataObject$covariates)
+  data <- covariateDataObject$covariates %>% dplyr::collect()
   
   message("Getting covariate names from covariate data object and writing text file...")
   NamesData <- getNamesFromCovariateId(data, covariateDataObject = covariateDataObject, fileToSave = fileToSave)
