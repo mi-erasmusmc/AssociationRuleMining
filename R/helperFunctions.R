@@ -152,7 +152,7 @@ appendCovariateData<- function(tempCovariateData,covariateData){
 
 hasData <- function(data) {
   ##==## checks if data has data ##==##
-  return(!is.null(data) && (data %>% count() %>% pull()) > 0)
+  return(!is.null(data) && (nrow(data)) > 0)
 }
 
 getTextFile <- function(fpObject, fileName){
