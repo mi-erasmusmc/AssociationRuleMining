@@ -29,18 +29,20 @@ filterCommonPatterns <- function(patternsObjectOne,
   commonSequences$difference <- abs(commonSequences$support.x - commonSequences$support.y)
   # Instead of keeping perfectly discriminative patterns, which happens in this section:
   # retain redundant sequences
-  if (keepDiscriminative == FALSE){
-  redundantSeq <- commonSequences %>% filter(difference < absoluteDifference)
-  ParallelLogger::logInfo(paste("Identified", nrow(redundantSeq), "redundant sequences and will remove."))
+  redundantSequences <- commonSequences %>% dplyr::filter(difference < absoluteDifference)
+  partialDiscriminativeSequences <- commonSequences %>% dplyr::filter(difference >= absoluteDifference)
   `%notin%` <- Negate(`%in%`)
-  s11 <- subset(patternsObjectOne, labels(patternsObjectOne) %notin% redundantSeq$sequence)
-  s22 <- subset(patternsObjectTwo, labels(patternsObjectTwo) %notin% redundantSeq$sequence)
-  # we will keep only those patterns that appear with different frequency in the two groups
+  if (keepDiscriminative == FALSE){
+  ParallelLogger::logInfo(paste0("Identified ", nrow(redundantSeq), " redundant sequences and will remove.\n Identified ", nrow(partialDiscriminativeSequences), " sequences with absolute difference greater or equal to ", absoluteDifference, "."))
+  s11 <- subset(patternsObjectOne, labels(patternsObjectOne) %in% partialDiscriminativeSequences$sequence)
+  s22 <- subset(patternsObjectTwo, labels(patternsObjectTwo) %in% partialDiscriminativeSequences$sequence)
+  # we will keep only those patterns that appear in both groups but with different frequency in the two groups 
   } else {
-  discriminativeSeq <- commonSequences %>% filter(difference >= absoluteDifference)
-  ParallelLogger::logInfo(paste("Identified", nrow(discriminativeSeq), "discriminative sequences."))
-  s11 <- subset(patternsObjectOne, labels(patternsObjectOne) %in% discriminativeSeq$sequence)
-  s22 <- subset(patternsObjectTwo, labels(patternsObjectTwo) %in% discriminativeSeq$sequence)
+    # we will keep only those patterns that appear with different frequency in the two groups + also those appearing in one group not in the other.
+  # discriminativeSeq <- commonSequences %>% filter(difference >= absoluteDifference)
+  ParallelLogger::logInfo(paste0("Identified ", nrow(redundantSequences), " redundant sequences with absolute support difference less than ", absoluteDifference, " . Will remove."))
+  s11 <- subset(patternsObjectOne, labels(patternsObjectOne) %notin% redundantSequences$sequence)
+  s22 <- subset(patternsObjectTwo, labels(patternsObjectTwo) %notin% redundantSequences$sequence)
   }
   result <- list(s11, s22)
   
